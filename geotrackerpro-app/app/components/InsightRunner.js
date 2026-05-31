@@ -65,8 +65,22 @@ function Output({ out, kind }) {
   if (kind === "query-list") {
     return (
       <div className="card">
-        <div className="section-title" style={{ margin: "0 0 12px" }}>Questions buyers ask AI</div>
-        {r.items.map((q, i) => <div className="factor-find" key={i} style={{ padding: "6px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>{i + 1}. {q}</div>)}
+        <div className="section-title" style={{ margin: "0 0 4px" }}>Questions buyers ask AI</div>
+        {r.source && <div className="weight-tag" style={{ marginBottom: 10 }}>Source: {r.source}</div>}
+        {r.items.map((it, i) => {
+          const q = typeof it === "string" ? it : it.query;
+          const intent = typeof it === "object" ? it.intent : "";
+          const target = typeof it === "object" ? it.target : "";
+          return (
+            <div key={i} style={{ padding: "8px 0", borderTop: i ? "1px solid var(--border)" : "none", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+              <span className="factor-find" style={{ margin: 0 }}>{i + 1}. {q}</span>
+              <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                {intent && <span className="weight-tag" style={{ background: "var(--bg-soft)", padding: "2px 8px", borderRadius: 999 }}>{intent}</span>}
+                {target && <span className="weight-tag" style={{ background: "rgba(22,179,166,0.1)", padding: "2px 8px", borderRadius: 999 }}>{target}</span>}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   }

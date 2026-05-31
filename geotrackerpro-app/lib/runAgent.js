@@ -23,6 +23,110 @@ function parseJsonObj(text) {
   }
 }
 
+const SUGGEST_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+// --- Agent 18: real Google/YouTube autocomplete research ---
+function buildSeeds(ind, loc) {
+  const L = loc ? ` ${loc}` : "";
+  const seeds = [
+    ind, `${ind}${L}`, `best ${ind}${L}`, `top ${ind}${L}`, `${ind} near me`,
+    `how much does ${ind} cost`, `how to choose a ${ind}`, `is ${ind} worth it`,
+    `${ind} reviews`, `${ind} cost`, `affordable ${ind}`, `why hire a ${ind}`,
+  ];
+  return [...new Set(seeds.filter(Boolean))];
+}
+
+async function fetchSuggest(seed, yt) {
+  try {
+    const url = `https://suggestqueries.google.com/complete/search?client=firefox${yt ? "&ds=yt" : ""}&q=${encodeURIComponent(seed)}`;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(url, { headers: { "User-Agent": SUGGEST_UA }, signal: ctrl.signal });
+    clearTimeout(t);
+    if (!r.ok) return [];
+    const j = JSON.parse(await r.text());
+    return Array.isArray(j[1]) ? j[1] : [];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchSuggestions(seeds) {
+  const all = [];
+  await Promise.all(
+    seeds.flatMap((s) => [fetchSuggest(s, false), fetchSuggest(s, true)]).map((p) => p.then((a) => all.push(...a)))
+  );
+  const seen = new Set();
+  const out = [];
+  for (const q of all) {
+    const k = String(q).toLowerCase().trim();
+    if (k && !seen.has(k)) { seen.add(k); out.push(String(q).trim()); }
+  }
+  return out;
+}
+
+async function runQueryResearch(agent, inputs) {
+  const ind = inputs.industry || "business";
+  const loc = inputs.location || "";
+  const base = { agentId: agent.id, name: agent.name, outputType: "query-list" };
+
+  let raw = await fetchSuggestions(buildSeeds(ind, loc));
+  // keep relevant suggestions (contain an industry token)
+  const tokens = ind.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+  if (tokens.length) {
+    const filtered = raw.filter((q) => tokens.some((t) => q.toLowerCase().includes(t)));
+    if (filtered.length >= 5) raw = filtered;
+  }
+
+  const haveKey = !!process.env.ANTHROPIC_API_KEY;
+
+  // If we got real suggestions and have an LLM, let Claude organize them.
+  if (raw.length && haveKey) {
+    try {
+      const prompt = `These are real Google/YouTube autocomplete suggestions for a ${ind} business${loc ? ` in ${loc}` : ""}:\n${raw.slice(0, 60).join("\n")}\n\nPick the 18 most valuable buyer questions/queries. For each, return the query, its intent (informational | commercial | comparison | local), and the best target page (homepage | /services | /faq | /areas | /blog). Return ONLY a JSON array of objects: { "query": "", "intent": "", "target": "" }`;
+      const rawTxt = await callLLM(prompt, 1200);
+      const cleaned = rawTxt.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      const first = cleaned.indexOf("["), last = cleaned.lastIndexOf("]");
+      const items = JSON.parse(first !== -1 ? cleaned.slice(first, last + 1) : cleaned);
+      if (Array.isArray(items) && items.length) {
+        return { ...base, result: { items, source: "Live Google & YouTube autocomplete" } };
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Real suggestions but no LLM (or LLM failed): return them raw.
+  if (raw.length) {
+    return { ...base, result: { items: raw.slice(0, 25).map((q) => ({ query: q, intent: "", target: "" })), source: "Live Google & YouTube autocomplete" } };
+  }
+
+  // Endpoints blocked / empty: LLM fallback (still useful).
+  if (haveKey) {
+    try {
+      const prompt = `List the 18 most common real questions a customer asks an AI assistant when looking for a ${ind} business${loc ? ` in ${loc}` : ""}. Return ONLY a JSON array of objects { "query":"", "intent":"informational|commercial|comparison|local", "target":"homepage|/services|/faq|/areas|/blog" }.`;
+      const cleaned = (await callLLM(prompt, 1000)).replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      const first = cleaned.indexOf("["), last = cleaned.lastIndexOf("]");
+      const items = JSON.parse(first !== -1 ? cleaned.slice(first, last + 1) : cleaned);
+      return { ...base, result: { items, source: "AI-generated (autocomplete unavailable)" } };
+    } catch { /* fall through */ }
+  }
+
+  const L = loc ? ` in ${loc}` : "";
+  return {
+    ...base,
+    result: {
+      source: "Template (no data sources available)",
+      items: [
+        { query: `best ${ind}${L}`, intent: "commercial", target: "homepage" },
+        { query: `how much does ${ind} cost`, intent: "informational", target: "/faq" },
+        { query: `${ind} near me`, intent: "local", target: "/areas" },
+        { query: `how to choose a ${ind}`, intent: "informational", target: "/blog" },
+        { query: `${ind} reviews`, intent: "commercial", target: "homepage" },
+      ],
+    },
+  };
+}
+
 async function callLLM(prompt, maxTokens = 800) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.CLAUDE_MODEL_FREE || "claude-haiku-4-5-20251001";
@@ -289,6 +393,9 @@ export async function runAgent({ agentId, inputs }) {
     if (agent.id === 14) return { ...base, result: { text: buildLlmsTxt(inputs) } };
     throw new Error("No deterministic handler for this agent.");
   }
+
+  // --- Agent 18: real search-suggest research (runs even without an LLM key) ---
+  if (agent.id === 18) return await runQueryResearch(agent, inputs);
 
   // --- LLM agents ---
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY.");
