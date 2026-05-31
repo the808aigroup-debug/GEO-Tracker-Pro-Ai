@@ -14,9 +14,9 @@ const NAV = [
     group: "Insights",
     items: [
       { label: "Sites", href: "/sites" },
-      { label: "AI Citations", href: "/citations" },
-      { label: "Brand Perception", href: "/brand-perception" },
-      { label: "Query Fanouts", href: "/query-fanouts" },
+      { label: "Query Research", href: "/query-fanouts" },
+      { label: "AI Citations", soon: true },
+      { label: "Brand Perception", soon: true },
       { label: "AI Crawler Activity", soon: true },
       { label: "Traffic", soon: true },
       { label: "Freshness", soon: true },

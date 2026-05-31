@@ -322,6 +322,10 @@ button.cta:disabled { opacity: 0.55; cursor: not-allowed; }
 .tier-starter { border-left-color: var(--tier-starter); }
 .tier-pro { border-left-color: var(--tier-pro); }
 .tier-agency { border-left-color: var(--tier-agency); }
+.band-live { border-left-color: var(--status-live); }
+.band-medium { border-left-color: #2C7DA0; }
+.band-heavy { border-left-color: #C2533B; }
+.band-pending { border-left-color: var(--status-roadmap); }
 
 .tier-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
 .tier-label { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--pacific); }
@@ -343,6 +347,7 @@ button.cta:disabled { opacity: 0.55; cursor: not-allowed; }
   min-height: 78px;
 }
 .agent-chip.is-live { border-color: var(--status-live); background: rgba(31, 169, 113, 0.06); }
+.agent-chip.is-heavy { border-color: rgba(194, 83, 59, 0.5); background: rgba(194, 83, 59, 0.07); }
 .chip-top { display: flex; align-items: center; justify-content: space-between; }
 .chip-num { font-family: var(--font-mono); font-weight: 600; font-size: 18px; color: var(--pacific); }
 .tier-starter .chip-num { color: var(--tier-starter); }

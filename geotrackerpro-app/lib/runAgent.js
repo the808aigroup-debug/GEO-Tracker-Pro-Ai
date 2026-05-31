@@ -7,6 +7,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAgent } from "./agents.js";
+import { apolloFindContact } from "./apollo.js";
 
 function fillTemplate(tpl, inputs) {
   return tpl.replace(/\{(\w+)\}/g, (_, k) => inputs[k] || "");
@@ -66,65 +67,91 @@ async function fetchSuggestions(seeds) {
   return out;
 }
 
+// Deterministic intent + target classification (implements the spec's
+// "cluster by intent / suggested target page" step — no LLM, no invented prompt).
+function classifyIntent(q) {
+  const s = q.toLowerCase();
+  if (/\bnear me\b/.test(s)) return "local";
+  if (/\bbest\b|\btop\b|\bvs\b|\bversus\b|\bcompare\b/.test(s)) return "comparison";
+  if (/\bhow\b|\bwhat\b|\bwhy\b|\bcost\b|\bprice\b|\bshould i\b|\bdo i\b/.test(s)) return "informational";
+  return "commercial";
+}
+function targetFor(intent) {
+  return intent === "local" ? "/areas" : intent === "informational" ? "/faq" : intent === "comparison" ? "/services" : "homepage";
+}
+
+// Agent 18 — fully deterministic: real Google + YouTube autocomplete, dedupe,
+// classify by intent, map target page, flag the top-10 "feed into Agent 15" set.
 async function runQueryResearch(agent, inputs) {
   const ind = inputs.industry || "business";
   const loc = inputs.location || "";
   const base = { agentId: agent.id, name: agent.name, outputType: "query-list" };
 
   let raw = await fetchSuggestions(buildSeeds(ind, loc));
-  // keep relevant suggestions (contain an industry token)
   const tokens = ind.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
   if (tokens.length) {
     const filtered = raw.filter((q) => tokens.some((t) => q.toLowerCase().includes(t)));
     if (filtered.length >= 5) raw = filtered;
   }
 
-  const haveKey = !!process.env.ANTHROPIC_API_KEY;
-
-  // If we got real suggestions and have an LLM, let Claude organize them.
-  if (raw.length && haveKey) {
-    try {
-      const prompt = `These are real Google/YouTube autocomplete suggestions for a ${ind} business${loc ? ` in ${loc}` : ""}:\n${raw.slice(0, 60).join("\n")}\n\nPick the 18 most valuable buyer questions/queries. For each, return the query, its intent (informational | commercial | comparison | local), and the best target page (homepage | /services | /faq | /areas | /blog). Return ONLY a JSON array of objects: { "query": "", "intent": "", "target": "" }`;
-      const rawTxt = await callLLM(prompt, 1200);
-      const cleaned = rawTxt.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-      const first = cleaned.indexOf("["), last = cleaned.lastIndexOf("]");
-      const items = JSON.parse(first !== -1 ? cleaned.slice(first, last + 1) : cleaned);
-      if (Array.isArray(items) && items.length) {
-        return { ...base, result: { items, source: "Live Google & YouTube autocomplete" } };
-      }
-    } catch { /* fall through */ }
-  }
-
-  // Real suggestions but no LLM (or LLM failed): return them raw.
+  let items;
+  let source;
   if (raw.length) {
-    return { ...base, result: { items: raw.slice(0, 25).map((q) => ({ query: q, intent: "", target: "" })), source: "Live Google & YouTube autocomplete" } };
+    items = raw.slice(0, 30).map((q) => { const intent = classifyIntent(q); return { query: q, intent, target: targetFor(intent) }; });
+    source = "Live Google & YouTube autocomplete";
+  } else {
+    // Documented fallback: curated template by category.
+    const L = loc ? ` in ${loc}` : "";
+    const seeds = [
+      `best ${ind}${L}`, `top ${ind}${L}`, `${ind} near me`, `how much does ${ind} cost`,
+      `how to choose a ${ind}`, `${ind} reviews`, `affordable ${ind}${L}`, `is ${ind} worth it`,
+      `licensed ${ind}${L}`, `questions to ask a ${ind}`,
+    ];
+    items = seeds.map((q) => { const intent = classifyIntent(q); return { query: q, intent, target: targetFor(intent) }; });
+    source = "Template (autocomplete unavailable)";
   }
 
-  // Endpoints blocked / empty: LLM fallback (still useful).
-  if (haveKey) {
-    try {
-      const prompt = `List the 18 most common real questions a customer asks an AI assistant when looking for a ${ind} business${loc ? ` in ${loc}` : ""}. Return ONLY a JSON array of objects { "query":"", "intent":"informational|commercial|comparison|local", "target":"homepage|/services|/faq|/areas|/blog" }.`;
-      const cleaned = (await callLLM(prompt, 1000)).replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-      const first = cleaned.indexOf("["), last = cleaned.lastIndexOf("]");
-      const items = JSON.parse(first !== -1 ? cleaned.slice(first, last + 1) : cleaned);
-      return { ...base, result: { items, source: "AI-generated (autocomplete unavailable)" } };
-    } catch { /* fall through */ }
-  }
+  return { ...base, result: { items, feedToAgent15: items.slice(0, 10).map((i) => i.query), source } };
+}
 
-  const L = loc ? ` in ${loc}` : "";
-  return {
-    ...base,
-    result: {
-      source: "Template (no data sources available)",
-      items: [
-        { query: `best ${ind}${L}`, intent: "commercial", target: "homepage" },
-        { query: `how much does ${ind} cost`, intent: "informational", target: "/faq" },
-        { query: `${ind} near me`, intent: "local", target: "/areas" },
-        { query: `how to choose a ${ind}`, intent: "informational", target: "/blog" },
-        { query: `${ind} reviews`, intent: "commercial", target: "homepage" },
-      ],
-    },
+// Agent 19 — sameAs Entity Linking (deterministic assembly)
+function buildSameAs({ businessName, url, profiles }) {
+  let urls = [];
+  if (profiles) urls = String(profiles).split(/[\s,]+/).map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s));
+  if (!urls.length) {
+    urls = [
+      "https://www.linkedin.com/company/REPLACE",
+      "https://www.facebook.com/REPLACE",
+      "https://www.instagram.com/REPLACE",
+      "https://www.yelp.com/biz/REPLACE",
+      "https://www.bbb.org/REPLACE",
+      "https://g.page/REPLACE",
+    ];
+  }
+  const obj = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: businessName,
+    url: /^https?:\/\//i.test(url) ? url : "https://" + (url || ""),
+    sameAs: urls,
   };
+  return `<script type="application/ld+json">\n${JSON.stringify(obj, null, 2)}\n</script>`;
+}
+
+// Agent 24 — Video Schema (deterministic VideoObject template)
+function buildVideoSchema({ videoUrl, videoTitle, videoDesc }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const obj = {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: videoTitle || "REPLACE — video title",
+    description: videoDesc || "REPLACE — 1–2 sentence description including service + location.",
+    thumbnailUrl: "REPLACE — https://.../thumbnail.jpg",
+    uploadDate: today,
+    contentUrl: videoUrl || "",
+    embedUrl: videoUrl || "",
+  };
+  return `<script type="application/ld+json">\n${JSON.stringify(obj, null, 2)}\n</script>`;
 }
 
 async function callLLM(prompt, maxTokens = 800) {
@@ -320,6 +347,39 @@ const WIKIDATA_GUIDE = [
   "Run the batch and confirm the new item was created.",
 ];
 
+// Agent 30 — Author / Founder Entity (deterministic Person schema + templated bios)
+function buildPersonEntity({ founderName, role, businessName, industry, years, certs, education, linkedinUrl, press, awards }) {
+  const sameAs = [];
+  if (linkedinUrl) sameAs.push(linkedinUrl);
+  if (press) sameAs.push(...String(press).split(/[\s,]+/).filter((u) => /^https?:\/\//i.test(u)));
+  const person = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: founderName,
+    jobTitle: role,
+    worksFor: { "@type": "Organization", name: businessName },
+    ...(sameAs.length ? { sameAs } : {}),
+    ...(education ? { alumniOf: education } : {}),
+    ...(awards ? { award: awards } : {}),
+    ...(certs ? { hasCredential: certs } : {}),
+    ...(industry ? { knowsAbout: industry } : {}),
+  };
+  const jsonld = `<script type="application/ld+json">\n${JSON.stringify(person, null, 2)}\n</script>`;
+  const yrs = years ? `${years} years` : "years";
+  const cred = [certs && `holds ${certs}`, education && `studied at ${education}`, awards && `has earned ${awards}`].filter(Boolean).join(", ");
+  const longBio = `${founderName} is the ${role} of ${businessName}, a ${industry} firm, with ${yrs} of hands-on experience. ${cred ? `${founderName} ${cred}. ` : ""}As ${role}, ${founderName} leads every ${industry} project with a focus on quality, transparency, and dependable results. Under ${founderName}'s direction, ${businessName} has built a reputation as a trusted local ${industry} expert, working directly with clients from first consultation through completion. To work with ${founderName} and the ${businessName} team, reach out today for a consultation.`;
+  const shortBio = `${founderName}, ${role} of ${businessName}, brings ${yrs} of ${industry} expertise${certs ? `, ${certs}` : ""}. ${founderName} leads the team and works directly with every client.`;
+  const authorSnippet = `<script type="application/ld+json">\n${JSON.stringify({ "@context": "https://schema.org", "@type": "Article", author: { "@type": "Person", name: founderName, url: linkedinUrl || "" }, publisher: { "@type": "Organization", name: businessName } }, null, 2)}\n</script>`;
+  const checklist = [
+    linkedinUrl ? "✓ LinkedIn linked (sameAs)" : "☐ Add LinkedIn URL",
+    certs ? "✓ Credentials listed (hasCredential)" : "☐ Add licenses / certifications",
+    education ? "✓ Education listed (alumniOf)" : "☐ Add education",
+    awards ? "✓ Awards listed (award)" : "☐ Add awards",
+    press ? "✓ Press/podcast appearances linked" : "☐ Add press / podcast URLs",
+  ];
+  return { jsonld, longBio, shortBio, authorSnippet, checklist };
+}
+
 function deterministicFreshness({ url }) {
   const today = new Date().toISOString().slice(0, 10);
   const html = `<p class="last-updated">Last updated: ${today}</p>`;
@@ -391,11 +451,12 @@ export async function runAgent({ agentId, inputs }) {
     if (agent.id === 9) return { ...base, result: { xml: buildSitemap(inputs) } };
     if (agent.id === 10) return { ...base, result: { text: buildRobots(inputs) } };
     if (agent.id === 14) return { ...base, result: { text: buildLlmsTxt(inputs) } };
+    if (agent.id === 19) return { ...base, result: { jsonld: buildSameAs(inputs) } };
+    if (agent.id === 24) return { ...base, result: { jsonld: buildVideoSchema(inputs) } };
+    if (agent.id === 30) return { ...base, result: buildPersonEntity(inputs) };
+    if (agent.id === 18) return await runQueryResearch(agent, inputs);
     throw new Error("No deterministic handler for this agent.");
   }
-
-  // --- Agent 18: real search-suggest research (runs even without an LLM key) ---
-  if (agent.id === 18) return await runQueryResearch(agent, inputs);
 
   // --- LLM agents ---
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY.");
@@ -509,6 +570,65 @@ export async function runAgent({ agentId, inputs }) {
         ],
       };
     }
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
+  }
+
+  if (agent.outputType === "pr") {
+    let data;
+    try {
+      data = parseJsonObj(await callLLM(prompt, 1800));
+      if (!Array.isArray(data.outlets)) throw new Error("bad");
+    } catch {
+      data = {
+        outlets: [{ name: "Local news / industry blog", type: inputs.outletType || "news", domain: "", angle: "Tie to a recent local story.", subject: `Story idea: ${inputs.businessName}`, pitch: `Hi — I'm with ${inputs.businessName}, a ${inputs.industry} business in ${inputs.location || "the area"}. I'd love to offer expert commentary for an upcoming piece. ${inputs.authorityMarkers || ""}` }],
+        followups: { day5: "Following up on my note below — happy to send more detail.", day12: "Last check-in — still glad to contribute whenever it's useful." },
+      };
+    }
+    // Enrich each outlet with a real contact via Apollo (no-op if no key).
+    if (process.env.APOLLO_API_KEY && Array.isArray(data.outlets)) {
+      await Promise.all(
+        data.outlets.map(async (o) => {
+          if (o.domain) o.contact = await apolloFindContact(o.domain);
+        })
+      );
+    }
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
+  }
+
+  if (agent.outputType === "local-semantic") {
+    let data;
+    try {
+      data = parseJsonObj(await callLLM(prompt, 1600));
+      if (!Array.isArray(data.signals)) throw new Error("bad");
+    } catch {
+      data = { signals: [{ category: "note", detail: "Could not generate — try again." }], injections: [], paragraph: "", faqs: [], areaServed: [] };
+    }
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
+  }
+
+  if (agent.outputType === "blog") {
+    let data;
+    try {
+      data = parseJsonObj(await callLLM(prompt, 4500));
+      if (!data.title || !data.bodyHtml) throw new Error("bad");
+    } catch {
+      return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: { error: "Blog generation failed — please try again." } };
+    }
+    // Assemble Article + FAQPage schema in code (reliable JSON-LD).
+    const today = new Date().toISOString().slice(0, 10);
+    const article = {
+      "@context": "https://schema.org", "@type": "Article",
+      headline: data.title,
+      datePublished: today, dateModified: today,
+      author: { "@type": "Person", name: inputs.founderName || inputs.businessName },
+      publisher: { "@type": "Organization", name: inputs.businessName },
+    };
+    const faqPage = {
+      "@context": "https://schema.org", "@type": "FAQPage",
+      mainEntity: (data.faqs || []).map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    };
+    data.articleSchema = `<script type="application/ld+json">\n${JSON.stringify(article, null, 2)}\n</script>`;
+    data.faqSchema = `<script type="application/ld+json">\n${JSON.stringify(faqPage, null, 2)}\n</script>`;
     return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
   }
 

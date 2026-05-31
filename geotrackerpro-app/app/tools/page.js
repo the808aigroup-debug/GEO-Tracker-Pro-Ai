@@ -18,10 +18,14 @@ const BLURBS = {
   10: "robots.txt allowing all AI crawlers.",
   11: "Site-wide Organization / LocalBusiness schema.",
   14: "Drop-in llms.txt press kit.",
-  15: "Does AI recommend you? (simulated check)",
   16: "Wikidata QuickStatements + notability check.",
   18: "Real buyer queries from live autocomplete.",
-  27: "How AI engines perceive the brand.",
+  19: "sameAs entity-linking schema block.",
+  24: "VideoObject schema for an embedded video.",
+  26: "PR pitch drafts + outlet targets + follow-ups.",
+  30: "Founder Person schema + bios + author block.",
+  35: "Local semantic map + injection snippets + FAQs.",
+  60: "Full GEO blog post + Article/FAQ schema + social.",
 };
 
 const TOOLS = liveTools()
@@ -42,6 +46,24 @@ const FIELD_LABELS = {
   yearFounded: "Year founded",
   founders: "Founder / CEO",
   notability: "Notability evidence",
+  profiles: "Profile URLs (LinkedIn, Yelp, FB…)",
+  videoUrl: "Video URL (YouTube/Vimeo)",
+  videoTitle: "Video title",
+  videoDesc: "Video description",
+  founderName: "Founder / owner name",
+  role: "Role / title",
+  years: "Years in industry",
+  certs: "Licenses / certifications",
+  education: "Education (school, degree)",
+  linkedinUrl: "LinkedIn URL",
+  press: "Press / podcast URLs",
+  awards: "Awards",
+  outletType: "Outlet type (news/podcast/blog/roundup)",
+  authorityMarkers: "Authority markers (from Agent 4)",
+  reviewThemes: "Top review themes (from Agent 20)",
+  serviceArea: "Service area / named neighborhoods",
+  topic: "Blog topic",
+  targetQuery: "Target query",
 };
 const PLACEHOLDERS = {
   businessName: "Aloha Roofing",
@@ -51,6 +73,24 @@ const PLACEHOLDERS = {
   yearFounded: "2010",
   founders: "Jane Doe",
   notability: "Press, awards, license #, review count",
+  founderName: "Devin Atkins",
+  role: "Founder & Principal",
+  years: "15",
+  certs: "Licensed GC #C-12345",
+  education: "University of Hawaii, B.S.",
+  linkedinUrl: "https://linkedin.com/in/…",
+  press: "Paste press/podcast URLs",
+  awards: "Best of Honolulu 2025",
+  outletType: "podcast",
+  authorityMarkers: "15 yrs, licensed, 200+ 5-star reviews",
+  reviewThemes: "fast response, fair pricing, honest",
+  serviceArea: "Kaimukī, Manoa, Diamond Head, Waikīkī",
+  topic: "How to choose a roofer in Honolulu",
+  targetQuery: "best roofer in Honolulu",
+  profiles: "Paste profile URLs, separated by spaces or commas",
+  videoUrl: "https://youtube.com/watch?v=…",
+  videoTitle: "How to choose a roofer in Honolulu",
+  videoDesc: "Short description of the video",
 };
 
 function chunk(arr, n) {
@@ -200,6 +240,87 @@ function Output({ out }) {
               <div className="factor-find" style={{ marginTop: 6 }}>AI names instead: {c.names_instead}</div>
             </div>
           ))}
+        </>
+      )}
+
+      {out.outputType === "pr" && (
+        <>
+          {(r.outlets || []).map((o, i) => (
+            <div className="factor" key={i}>
+              <div className="factor-head">
+                <span className="factor-name">{o.name} <span className="weight-tag">· {o.type}{o.domain ? ` · ${o.domain}` : ""}</span></span>
+                <CopyBtn text={`Subject: ${o.subject}\n\n${o.pitch}`} />
+              </div>
+              {o.contact && (
+                <div className="weight-tag" style={{ marginTop: 4, color: "var(--ocean)" }}>
+                  Contact: {o.contact.error ? o.contact.error : `${o.contact.name || "—"}${o.contact.title ? `, ${o.contact.title}` : ""} · ${o.contact.email}`}
+                </div>
+              )}
+              {o.angle && <div className="weight-tag" style={{ marginTop: 4 }}>Angle: {o.angle}</div>}
+              <div className="factor-find" style={{ marginTop: 6 }}><b>Subject:</b> {o.subject}</div>
+              <div className="factor-find" style={{ marginTop: 4, lineHeight: 1.5 }}>{o.pitch}</div>
+            </div>
+          ))}
+          {r.followups && (
+            <>
+              <div className="section-title" style={{ fontSize: 16, margin: "16px 0 6px" }}>Follow-ups</div>
+              <div className="out-row"><div className="out-text"><b>Day 5:</b> {r.followups.day5}</div><CopyBtn text={r.followups.day5} /></div>
+              <div className="out-row"><div className="out-text"><b>Day 12:</b> {r.followups.day12}</div><CopyBtn text={r.followups.day12} /></div>
+            </>
+          )}
+          <div className="weight-tag" style={{ marginTop: 10 }}>Editor emails need Apollo/ZoomInfo — these are the targets + drafts.</div>
+        </>
+      )}
+
+      {out.outputType === "local-semantic" && (
+        <>
+          <div className="section-title" style={{ fontSize: 16, margin: "0 0 6px" }}>Local signals</div>
+          {(r.signals || []).map((s, i) => (
+            <div className="factor-find" key={i} style={{ padding: "4px 0" }}><b>{s.category}:</b> {s.detail}</div>
+          ))}
+          {r.paragraph && (
+            <><div className="section-title" style={{ fontSize: 16, margin: "14px 0 6px" }}>Sample homepage paragraph</div>
+              <div className="out-row"><div className="out-text" style={{ lineHeight: 1.6 }}>{r.paragraph}</div><CopyBtn text={r.paragraph} /></div></>
+          )}
+          {(r.faqs || []).length > 0 && (
+            <><div className="section-title" style={{ fontSize: 16, margin: "14px 0 6px" }}>Location FAQs</div>
+              {r.faqs.map((f, i) => <div className="factor" key={i}><div className="factor-name">{f.q}</div><div className="factor-find" style={{ marginTop: 4 }}>{f.a}</div></div>)}</>
+          )}
+          {(r.areaServed || []).length > 0 && <div className="weight-tag" style={{ marginTop: 10 }}>areaServed: {r.areaServed.join(", ")}</div>}
+        </>
+      )}
+
+      {out.outputType === "blog" && (r.error ? <p className="err">{r.error}</p> : (
+        <>
+          <div className="out-row"><div><div className="out-text" style={{ fontWeight: 600 }}>{r.title}</div><div className="weight-tag">{r.metaDescription}</div></div><CopyBtn text={r.title} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "14px 0 6px" }}>Post body (HTML)</div>
+          <div className="out-row"><pre className="code" style={{ maxHeight: 300 }}>{r.bodyHtml}</pre><CopyBtn text={r.bodyHtml} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "14px 0 6px" }}>Article schema</div>
+          <div className="out-row"><pre className="code">{r.articleSchema}</pre><CopyBtn text={r.articleSchema} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "14px 0 6px" }}>FAQ schema</div>
+          <div className="out-row"><pre className="code">{r.faqSchema}</pre><CopyBtn text={r.faqSchema} /></div>
+          {r.social && (
+            <><div className="section-title" style={{ fontSize: 16, margin: "14px 0 6px" }}>Social captions</div>
+              <div className="out-row"><div className="out-text"><b>LinkedIn:</b> {r.social.linkedin}</div><CopyBtn text={r.social.linkedin} /></div>
+              <div className="out-row"><div className="out-text"><b>X:</b> {r.social.x}</div><CopyBtn text={r.social.x} /></div>
+              <div className="out-row"><div className="out-text"><b>Facebook:</b> {r.social.facebook}</div><CopyBtn text={r.social.facebook} /></div></>
+          )}
+          {r.heroAlt && <div className="weight-tag" style={{ marginTop: 10 }}>Hero image alt: {r.heroAlt}</div>}
+        </>
+      ))}
+
+      {out.outputType === "person-entity" && (
+        <>
+          <div className="weight-tag" style={{ marginBottom: 8 }}>Person schema → paste into your /about page &lt;head&gt;.</div>
+          <div className="out-row"><pre className="code">{r.jsonld}</pre><CopyBtn text={r.jsonld} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "16px 0 6px" }}>Long bio (/about page)</div>
+          <div className="out-row"><div className="out-text" style={{ lineHeight: 1.6 }}>{r.longBio}</div><CopyBtn text={r.longBio} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "16px 0 6px" }}>Short bio (bylines)</div>
+          <div className="out-row"><div className="out-text">{r.shortBio}</div><CopyBtn text={r.shortBio} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "16px 0 6px" }}>Blog author schema</div>
+          <div className="out-row"><pre className="code">{r.authorSnippet}</pre><CopyBtn text={r.authorSnippet} /></div>
+          <div className="section-title" style={{ fontSize: 16, margin: "16px 0 6px" }}>Credibility checklist</div>
+          {r.checklist.map((c, i) => <div className="factor-find" key={i} style={{ padding: "3px 0" }}>{c}</div>)}
         </>
       )}
 

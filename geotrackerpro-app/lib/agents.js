@@ -111,22 +111,46 @@ export const AGENTS = [
     why: "Wikidata is the largest knowledge graph AI engines reference for entity disambiguation. A clean entry is the strongest 'this entity exists' signal; adoption is low single digits — a moat.",
   },
   {
-    id: 18, name: "Query Fanouts", tier: "pro", type: "monitor", mode: "llm",
-    status: "live", needsScrape: false, inputs: ["industry"],
+    id: 18, name: "Query Research", tier: "pro", type: "monitor", mode: "deterministic",
+    status: "live", needsScrape: false, inputs: ["industry"], extraInputs: ["location"],
     outputType: "query-list",
-    prompt: "You are a GEO expert. List the 12 most common real questions a potential customer would ask an AI assistant (ChatGPT, Perplexity, Gemini) when looking for a {industry} business in {location}. Use natural, conversational phrasing real people actually type. Return ONLY a JSON array of 12 strings.",
-    why: "The real questions buyers ask AI — the queries you need to be the answer to. Feeds content + FAQ strategy.",
+    why: "Real conversational queries from Google + YouTube autocomplete (your spec's free sources). Feeds Agents 1,2,3,5,14,15. Paid sources (AlsoAsked/ATP/Reddit/Quora) added when keys available.",
   },
-  { id: 19, name: "sameAs Entity Linking", tier: "pro", type: "generate", status: "roadmap", needsScrape: true },
+  {
+    id: 19, name: "sameAs Entity Linking", tier: "pro", type: "generate", mode: "deterministic",
+    status: "live", needsScrape: false, inputs: ["businessName", "url"], extraInputs: ["profiles"],
+    outputType: "code-schema",
+    why: "sameAs is the schema-level entity disambiguation signal — pairs with Wikidata to make the business unmistakably 'this entity' to AI crawlers.",
+  },
   { id: 21, name: "Citation Source Audit", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
   { id: 22, name: "Schema Validator + Crawl Health", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
   { id: 23, name: "Image & Alt-Text Optimization", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
-  { id: 24, name: "Video Schema", tier: "pro", type: "generate", status: "roadmap", needsScrape: true },
+  {
+    id: 24, name: "Video Schema", tier: "pro", type: "generate", mode: "deterministic",
+    status: "live", needsScrape: false, inputs: ["videoUrl"], extraInputs: ["videoTitle", "videoDesc"],
+    outputType: "code-schema",
+    why: "Video schema with a transcript is one of the most-cited content types on Perplexity and Gemini, and almost nobody on local sites bothers with it.",
+  },
   { id: 28, name: "AI Crawler Analytics", tier: "pro", type: "monitor", status: "roadmap", needsScrape: false },
-  { id: 30, name: "Author / Founder Entity", tier: "pro", type: "generate", status: "roadmap", needsScrape: true },
+  {
+    id: 30, name: "Author / Founder Entity", tier: "pro", type: "generate", mode: "deterministic",
+    status: "live", needsScrape: false,
+    inputs: ["founderName", "role", "businessName", "industry"],
+    extraInputs: ["years", "certs", "education", "linkedinUrl", "press", "awards"],
+    outputType: "person-entity",
+    why: "AI engines increasingly weight 'who is the expert behind this answer' via the Person entity. Tying a recognized human to the brand is one of the highest-leverage E-E-A-T moves.",
+  },
   { id: 32, name: "Reddit / Community Signal", tier: "pro", type: "monitor", status: "roadmap", needsScrape: false },
   { id: 34, name: "Podcast / Transcript Authority", tier: "pro", type: "custom", status: "roadmap", needsScrape: false },
-  { id: 35, name: "Local Semantic Relevance", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
+  {
+    id: 35, name: "Local Semantic Relevance", tier: "pro", type: "audit", mode: "llm",
+    status: "live", needsScrape: false,
+    inputs: ["businessName", "industry", "location"],
+    extraInputs: ["serviceArea"],
+    outputType: "local-semantic",
+    prompt: "You are a local-SEO/GEO expert. For {businessName}, a {industry} business serving {location} ({serviceArea}), build a deep local semantic map. Cover these categories: neighborhoods (with zip codes), climate/weather factors relevant to {industry}, local regulations or permits, seasonal local problems, local terminology/dialect, and major landmarks. Map signals to target pages and write injection snippets. Return ONLY JSON: { \"signals\": [ { \"category\": \"\", \"detail\": \"\" } ], \"injections\": [ { \"page\": \"\", \"recommendation\": \"\" } ], \"paragraph\": \"<sample hyper-local homepage paragraph>\", \"faqs\": [ { \"q\": \"\", \"a\": \"\" } ], \"areaServed\": [ \"<neighborhood>\" ] }",
+    why: "AI engines treat 'we serve Honolulu' and a richly localized signal set as completely different. This is what separates a generic local business from 'the local expert' entity.",
+  },
   { id: 37, name: "Agent 37 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
   { id: 38, name: "Agent 38 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
   { id: 39, name: "Agent 39 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
@@ -138,28 +162,40 @@ export const AGENTS = [
   { id: 56, name: "Lead Capture & Conversion", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
   { id: 58, name: "Featured Snippet & PAA", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
   { id: 59, name: "Accessibility / WCAG", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
-  { id: 60, name: "Blog Content Engine", tier: "pro", type: "generate", status: "roadmap", needsScrape: false },
+  {
+    id: 60, name: "Blog Content Engine", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false,
+    inputs: ["businessName", "industry", "topic"],
+    extraInputs: ["location", "founderName", "targetQuery"],
+    outputType: "blog",
+    prompt: "You are a GEO content writer. Write a complete blog post for {businessName}, a {industry} business in {location}, on the topic: {topic}. Target query: {targetQuery}. Author byline: {founderName}. Requirements: 1200-1800 words; a BLUF intro (first sentence directly answers the topic); question-driven H2/H3 headings; embed 1-2 specific authority markers; suggest 2-3 internal links to /services, /about, /faq; add a 3-5 question FAQ section at the end; an SEO title (50-60 chars); a meta description (150-160 chars); 3 social captions (LinkedIn, X, Facebook); and a hero image alt text. Return ONLY JSON: { \"title\": \"\", \"metaDescription\": \"\", \"bodyHtml\": \"<full HTML using <h2>,<h3>,<p>,<ul>>\", \"faqs\": [ { \"q\": \"\", \"a\": \"\" } ], \"social\": { \"linkedin\": \"\", \"x\": \"\", \"facebook\": \"\" }, \"internalLinks\": [ \"\" ], \"heroAlt\": \"\" }",
+    why: "Ongoing blog content keeps the site fresh, expands topical coverage, and creates new citation surfaces — a weekly post compounds into 50+ citation surfaces/year per client.",
+  },
 
   // ---------- AGENCY ----------
   { id: 12, name: "Agent 12 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
   { id: 13, name: "Agent 13 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
   {
-    id: 15, name: "AI Citation Check", tier: "agency", type: "monitor", mode: "llm",
-    status: "live", needsScrape: false, inputs: ["businessName", "industry"],
-    outputType: "citation-check",
-    prompt: "You are simulating how AI assistants answer buying-intent questions. For a {industry} business named {businessName} in {location}, consider these buyer questions: 'best {industry} in {location}', 'top {industry} firms', 'who should I hire for {industry}'. For each, state whether you would likely NAME {businessName} in your answer, and what types of firms or named examples you'd mention instead. Be brutally honest — most small businesses are NOT cited by AI yet. Return ONLY JSON: { \"overall\": \"<1-sentence verdict>\", \"cited\": false, \"checks\": [ { \"query\": \"<the question>\", \"would_cite_business\": false, \"names_instead\": \"<what AI names instead>\" } ] }",
-    why: "Shows a prospect, live, whether AI recommends them — and who's winning instead. The most persuasive demo you can run.",
+    id: 15, name: "AI Engine Citation Monitor", tier: "agency", type: "monitor",
+    status: "roadmap", needsScrape: false,
+    note: "FULL canonical build: polls ChatGPT/Perplexity/Gemini/Claude/Copilot/Google AI Overviews via APIs + DB logging + schedule. Needs API keys + budget. Build later.",
   },
   { id: 17, name: "Competitor GEO Audit", tier: "agency", type: "audit", status: "roadmap", needsScrape: true },
   { id: 20, name: "Review Intelligence", tier: "agency", type: "custom", status: "roadmap", needsScrape: false },
   { id: 25, name: "Monthly GEO Health Score / Report", tier: "agency", type: "aggregate", status: "roadmap", needsScrape: false },
-  { id: 26, name: "Digital PR / Mention Outreach", tier: "agency", type: "generate", status: "roadmap", needsScrape: false },
   {
-    id: 27, name: "AI Brand Perception", tier: "agency", type: "monitor", mode: "llm",
-    status: "live", needsScrape: false, inputs: ["businessName", "industry"],
-    outputType: "brand-perception",
-    prompt: "You are auditing how AI search engines perceive a business. For the business named {businessName} in {location} ({industry}), based on general knowledge, assess: (1) what AI engines likely know about it, (2) overall sentiment (positive / neutral / negative / unknown), (3) confidence (high / medium / low), (4) the top 3 gaps causing weak or missing AI perception, and (5) the single highest-impact action to fix it. Return ONLY JSON: { \"knows\": \"<1-2 sentences>\", \"sentiment\": \"<value>\", \"confidence\": \"<value>\", \"gaps\": [\"<g1>\",\"<g2>\",\"<g3>\"], \"top_action\": \"<1 sentence>\" }",
-    why: "Tells a prospect what AI 'thinks' of them today — usually 'I don't have enough information,' which is the wake-up call that sells the service.",
+    id: 26, name: "Digital PR / Mention Outreach", tier: "agency", type: "generate", mode: "llm",
+    status: "live", needsScrape: false,
+    inputs: ["businessName", "industry", "outletType"],
+    extraInputs: ["location", "authorityMarkers", "reviewThemes"],
+    outputType: "pr",
+    prompt: "You are a digital PR strategist. For {businessName}, a {industry} business in {location}, draft outreach to {outletType} outlets. Authority markers: {authorityMarkers}. Review themes: {reviewThemes}. Suggest 5 realistic outlet targets appropriate to the location/industry (local news, industry blogs, podcasts, or best-of roundups). For EACH outlet include its real website domain (e.g. honolulumagazine.com) so contacts can be looked up. For each, write a personalized pitch with: a subject line, a hook, a value proposition tied to the authority markers/review themes, and a clear CTA. Also provide a 5-day and 12-day follow-up message. Return ONLY JSON: { \"outlets\": [ { \"name\": \"\", \"type\": \"\", \"domain\": \"\", \"angle\": \"\", \"subject\": \"\", \"pitch\": \"\" } ], \"followups\": { \"day5\": \"\", \"day12\": \"\" } }",
+    why: "Being mentioned by a publication AI engines trust is worth more than 100 schema tweaks. Editor emails are pulled live from Apollo (needs APOLLO_API_KEY + credits).",
+  },
+  {
+    id: 27, name: "AI Brand Perception", tier: "agency", type: "monitor",
+    status: "roadmap", needsScrape: false,
+    note: "FULL canonical build: runs 8 perception queries across ChatGPT/Perplexity/Claude/Gemini, extracts with Devin's exact extractor prompt, diffs over time. Needs multi-engine API keys. Build later.",
   },
   { id: 29, name: "Entity Trust Score", tier: "agency", type: "audit", status: "roadmap", needsScrape: true },
   { id: 31, name: "GEO Content Gap", tier: "agency", type: "generate", status: "roadmap", needsScrape: true },
@@ -196,3 +232,26 @@ export const TIERS = [
   { key: "pro", label: "Pro Tier" },
   { key: "agency", label: "Agency Tier" },
 ];
+
+// ---- Readiness bands (how much work/cost is left to build each) ----
+const MEDIUM = new Set([22, 23, 56, 57, 58, 59]); // need the site crawler, no API cost
+const HEAVY = new Set([12, 13, 15, 17, 20, 21, 25, 27, 28, 29, 31, 32, 33, 34, 36, 55]); // need paid APIs / data / DB
+
+export function bandOf(a) {
+  if (a.status === "live") return "live";
+  if (typeof a.id !== "number") return "live";
+  if (MEDIUM.has(a.id)) return "medium";
+  if (HEAVY.has(a.id)) return "heavy";
+  return "pending"; // 37–54 and any other undocumented
+}
+
+export const BANDS = [
+  { key: "live", label: "Live — good to go" },
+  { key: "medium", label: "Buildable next (no API cost)" },
+  { key: "heavy", label: "Heavy — needs APIs / data (later)" },
+  { key: "pending", label: "Spec pending" },
+];
+
+export function byBand(key) {
+  return AGENTS.filter((a) => bandOf(a) === key && typeof a.id === "number").sort((a, b) => a.id - b.id);
+}

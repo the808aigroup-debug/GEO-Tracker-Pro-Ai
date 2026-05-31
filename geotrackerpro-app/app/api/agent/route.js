@@ -1,7 +1,7 @@
 import { runAgent } from "../../../lib/runAgent.js";
 import { getAgent } from "../../../lib/agents.js";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function POST(req) {
