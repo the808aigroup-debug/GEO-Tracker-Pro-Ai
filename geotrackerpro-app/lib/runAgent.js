@@ -12,6 +12,17 @@ function fillTemplate(tpl, inputs) {
   return tpl.replace(/\{(\w+)\}/g, (_, k) => inputs[k] || "");
 }
 
+function parseJsonObj(text) {
+  const t = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try {
+    return JSON.parse(t);
+  } catch {
+    const first = t.indexOf("{"), last = t.lastIndexOf("}");
+    if (first !== -1 && last !== -1) return JSON.parse(t.slice(first, last + 1));
+    throw new Error("not_json");
+  }
+}
+
 async function callLLM(prompt, maxTokens = 800) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.CLAUDE_MODEL_FREE || "claude-haiku-4-5-20251001";
@@ -333,6 +344,65 @@ export async function runAgent({ agentId, inputs }) {
       text = fallbackHero(inputs);
     }
     return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: { text, words: countWords(text) } };
+  }
+
+  if (agent.outputType === "query-list") {
+    let items;
+    try {
+      const raw = await callLLM(prompt, 700);
+      const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      const first = cleaned.indexOf("["), last = cleaned.lastIndexOf("]");
+      items = JSON.parse(first !== -1 ? cleaned.slice(first, last + 1) : cleaned);
+      items = (items || []).filter((x) => typeof x === "string" && x.trim());
+      if (items.length < 4) throw new Error("few");
+    } catch {
+      const ind = inputs.industry || "business";
+      const loc = inputs.location ? ` in ${inputs.location}` : "";
+      items = [
+        `best ${ind}${loc}`, `top ${ind} companies${loc}`, `how much does ${ind} cost`,
+        `who is the best ${ind}${loc}`, `${ind} near me`, `is ${ind} worth it`,
+        `how to choose a ${ind}`, `${ind} reviews`, `affordable ${ind}${loc}`,
+        `${ind} vs alternatives`, `questions to ask a ${ind}`, `licensed ${ind}${loc}`,
+      ];
+    }
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: { items: items.slice(0, 12) } };
+  }
+
+  if (agent.outputType === "brand-perception") {
+    let data;
+    try {
+      data = parseJsonObj(await callLLM(prompt, 700));
+      if (!data.knows) throw new Error("bad");
+    } catch {
+      data = {
+        knows: `AI engines likely have little to no specific information about ${inputs.businessName}.`,
+        sentiment: "unknown", confidence: "low",
+        gaps: ["No structured data / schema", "No authoritative third-party citations", "No entity presence (Wikidata, knowledge graph)"],
+        top_action: "Establish entity signals: Organization schema + a clean Wikidata entry + citable content.",
+      };
+    }
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
+  }
+
+  if (agent.outputType === "citation-check") {
+    let data;
+    try {
+      data = parseJsonObj(await callLLM(prompt, 800));
+      if (!Array.isArray(data.checks)) throw new Error("bad");
+    } catch {
+      const ind = inputs.industry || "business";
+      const loc = inputs.location ? ` in ${inputs.location}` : "";
+      data = {
+        overall: `${inputs.businessName} is very unlikely to be cited by AI engines yet for these queries.`,
+        cited: false,
+        checks: [
+          { query: `best ${ind}${loc}`, would_cite_business: false, names_instead: "Larger, well-reviewed firms with strong web presence and directories." },
+          { query: `top ${ind} firms`, would_cite_business: false, names_instead: "Established brands and aggregator/'best of' list sites." },
+          { query: `who should I hire for ${ind}`, would_cite_business: false, names_instead: "Generic guidance + firms with schema and authoritative citations." },
+        ],
+      };
+    }
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
   }
 
   if (agent.outputType === "org-schema") {

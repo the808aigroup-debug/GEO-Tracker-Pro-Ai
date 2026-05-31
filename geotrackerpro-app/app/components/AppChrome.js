@@ -14,10 +14,10 @@ const NAV = [
     group: "Insights",
     items: [
       { label: "Sites", href: "/sites" },
-      { label: "AI Citations", soon: true },
+      { label: "AI Citations", href: "/citations" },
+      { label: "Brand Perception", href: "/brand-perception" },
+      { label: "Query Fanouts", href: "/query-fanouts" },
       { label: "AI Crawler Activity", soon: true },
-      { label: "Brand Perception", soon: true },
-      { label: "Query Fanouts", soon: true },
       { label: "Traffic", soon: true },
       { label: "Freshness", soon: true },
     ],
@@ -38,7 +38,7 @@ const NAV = [
   },
 ];
 
-const INTERNAL = ["/dashboard", "/sites", "/recommendations", "/reports", "/agents", "/tools"];
+const INTERNAL = ["/dashboard", "/sites", "/citations", "/brand-perception", "/query-fanouts", "/recommendations", "/reports", "/agents", "/tools"];
 
 export default function AppChrome({ children }) {
   const pathname = usePathname() || "/";
