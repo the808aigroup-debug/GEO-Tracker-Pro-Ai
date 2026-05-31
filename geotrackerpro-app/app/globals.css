@@ -283,7 +283,77 @@ button.cta:disabled { opacity: 0.55; cursor: not-allowed; }
   margin: 0;
 }
 
+/* ---------- Agent Control Panel ---------- */
+:root {
+  --tier-starter: #16B3A6;  /* Sea Glass */
+  --tier-pro: #2C7DA0;      /* Ocean blue */
+  --tier-agency: #C2902F;   /* Premium gold */
+  --status-live: #1FA971;
+  --status-built: #C2902F;
+  --status-roadmap: #97A4A8;
+}
+
+.panel-summary {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 26px;
+  margin-top: 20px;
+  box-shadow: 0 1px 2px rgba(10, 31, 45, 0.04), 0 8px 24px rgba(10, 31, 45, 0.04);
+}
+.stat { display: flex; flex-direction: column; }
+.stat-num { font-family: var(--font-mono); font-size: 30px; font-weight: 600; color: var(--pacific); line-height: 1; }
+.stat-lab { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 4px; }
+.panel-run { margin-left: auto; margin-top: 0; text-decoration: none; display: inline-block; }
+
+.tier-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-top: 18px;
+}
+.tier-starter { border-left-color: var(--tier-starter); }
+.tier-pro { border-left-color: var(--tier-pro); }
+.tier-agency { border-left-color: var(--tier-agency); }
+
+.tier-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.tier-label { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--pacific); }
+.tier-starter .tier-label { color: var(--tier-starter); }
+.tier-pro .tier-label { color: var(--tier-pro); }
+.tier-agency .tier-label { color: var(--tier-agency); }
+.tier-count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.chip-link { text-decoration: none; }
+.agent-chip {
+  background: var(--cloud);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 78px;
+}
+.agent-chip.is-live { border-color: var(--status-live); background: rgba(31, 169, 113, 0.06); }
+.chip-top { display: flex; align-items: center; justify-content: space-between; }
+.chip-num { font-family: var(--font-mono); font-weight: 600; font-size: 18px; color: var(--pacific); }
+.tier-starter .chip-num { color: var(--tier-starter); }
+.tier-pro .chip-num { color: var(--tier-pro); }
+.tier-agency .chip-num { color: var(--tier-agency); }
+.status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.chip-name { font-size: 12.5px; color: var(--pacific); line-height: 1.3; font-weight: 500; }
+.chip-status { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: auto; }
+.chip-link .agent-chip:hover { border-color: var(--status-live); transform: translateY(-1px); transition: transform 0.1s; }
+
 @media (max-width: 640px) {
   h1 { font-size: 34px; }
   .row, .cols, .tool-grid { grid-template-columns: 1fr; }
+  .panel-run { margin-left: 0; }
 }
