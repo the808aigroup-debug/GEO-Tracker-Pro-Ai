@@ -5,7 +5,15 @@ import { NextResponse } from "next/server";
 // Protection only activates once DASHBOARD_USER + DASHBOARD_PASS are set in Vercel,
 // so you can never lock yourself out before configuring it.
 export const config = {
-  matcher: ["/dashboard/:path*", "/agents/:path*", "/tools/:path*", "/api/agent/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/sites/:path*",
+    "/recommendations/:path*",
+    "/reports/:path*",
+    "/agents/:path*",
+    "/tools/:path*",
+    "/api/agent/:path*",
+  ],
 };
 
 export function middleware(req) {

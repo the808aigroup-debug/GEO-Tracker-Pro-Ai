@@ -1,4 +1,5 @@
 import "./globals.css";
+import AppChrome from "./components/AppChrome.js";
 
 export const metadata = {
   title: "GeoTrackerPro — Free AI Search (GEO) Audit",
@@ -9,7 +10,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppChrome>{children}</AppChrome>
+      </body>
     </html>
   );
 }
