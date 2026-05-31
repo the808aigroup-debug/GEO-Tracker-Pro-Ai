@@ -212,9 +212,25 @@ export const AGENTS = [
     prompt: "Provide the top 5 vertical-specific GEO optimizations a {industry} business{location} should make for AI search. For each, give a concrete template or example. Return ONLY JSON: { \"items\": [ { \"title\": \"<optimization>\", \"body\": \"<template/example>\" } ] }",
     why: "Deeper, industry-specific optimization per vertical.",
   },
-  { id: 56, name: "Lead Capture & Conversion", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
-  { id: 58, name: "Featured Snippet & PAA", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
-  { id: 59, name: "Accessibility / WCAG", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
+  {
+    id: 56, name: "Lead Capture & Conversion", tier: "pro", type: "audit", mode: "llm",
+    status: "live", needsScrape: true, inputs: ["url", "businessName", "industry"], extraInputs: ["location", "leadCaptureMethod"],
+    outputType: "doc",
+    prompt: "You are a conversion-optimization expert. Audit this page's conversion layer for {businessName}, a {industry} business in {location}. Lead capture method: {leadCaptureMethod}. Page HTML:\n{pageHtml}\n\nScore against this 12-point checklist: (1) primary CTA above the fold, (2) clickable tel: phone in header, (3) form fields ≤5, (4) social proof near CTA, (5) urgency element, (6) mobile sticky CTA, (7) exit-intent capture, (8) no autoplay video over CTA, (9) trust badges visible, (10) clear next-step language, (11) thank-you page, (12) form analytics. Return ONLY JSON: { \"title\": \"Conversion Audit — score X/100\", \"bodyHtml\": \"<an HTML table of all 12 checks with pass/fail + remediation, then 3 sample CTA rewrites>\", \"codeBlocks\": [ { \"label\": \"Mobile sticky-CTA snippet\", \"code\": \"<div>…</div>\" } ] }",
+    why: "Citations bring traffic; traffic without a conversion path is wasted. This ensures GEO work compounds into real bookings.",
+  },
+  {
+    id: 58, name: "Featured Snippet & PAA", tier: "pro", type: "audit", mode: "llm",
+    status: "live", needsScrape: true, inputs: ["url", "targetQuery"], outputType: "doc",
+    prompt: "You are a Featured Snippet + People Also Ask optimizer. Target query: '{targetQuery}'. Current page content:\n{pageHtml}\n\nGenerate: (1) an optimized snippet block (choose paragraph / list / table format) built to win position 0, (2) 5-8 People Also Ask question + 40-60 word answer blocks with H3 headings, (3) matching schema (QAPage/HowTo/Article). You cannot see Google's live results — produce best-practice optimized blocks. Return ONLY JSON: { \"title\": \"Featured Snippet & PAA\", \"bodyHtml\": \"<snippet block + PAA Q&A as HTML with h3s>\", \"codeBlocks\": [ { \"label\": \"PAA schema\", \"code\": \"…\" } ] }",
+    why: "Featured snippets + PAA are double-counted: they show in Google AND get ingested by AI engines as Google-validated answers (2-3x more citations).",
+  },
+  {
+    id: 59, name: "Accessibility / WCAG", tier: "pro", type: "audit", mode: "llm",
+    status: "live", needsScrape: true, inputs: ["url"], outputType: "checks",
+    prompt: "You are a WCAG 2.1 AA accessibility auditor. Audit this page HTML for accessibility issues — alt text, heading order, ARIA labels, form labels, link text quality, lang attribute, button labels, etc. (note: you cannot measure color contrast without rendering, so flag it as 'verify manually'). Page HTML:\n{pageHtml}\n\nReturn ONLY JSON: { \"summary\": \"<compliance overview + 2-3 quick wins>\", \"checks\": [ { \"label\": \"<WCAG criterion / issue>\", \"status\": \"pass|warn|fail\", \"fix\": \"<specific code fix>\" } ] }",
+    why: "Two reasons: ADA lawsuits against small-business sites cost $10K-$50K to settle, and accessible HTML is more parseable HTML — a confirmed ranking signal for Google + AI engines.",
+  },
   {
     id: 60, name: "Blog Content Engine", tier: "pro", type: "generate", mode: "llm",
     status: "live", needsScrape: false,
@@ -239,7 +255,7 @@ export const AGENTS = [
   { id: 25, name: "Monthly GEO Health Score / Report", tier: "agency", type: "aggregate", status: "roadmap", needsScrape: false },
   {
     id: 26, name: "Digital PR / Mention Outreach", tier: "agency", type: "generate", mode: "llm",
-    status: "live", needsScrape: false,
+    status: "live", lite: true, liteLabel: "Lite · Apollo later", needsScrape: false,
     inputs: ["businessName", "industry", "outletType"],
     extraInputs: ["location", "authorityMarkers", "reviewThemes"],
     outputType: "pr",
@@ -256,16 +272,53 @@ export const AGENTS = [
   { id: 31, name: "GEO Content Gap", tier: "agency", type: "generate", status: "roadmap", needsScrape: true },
   { id: 33, name: "AI Answer Injection Simulator", tier: "agency", type: "monitor", status: "roadmap", needsScrape: true },
   { id: 36, name: "AI Recommendation Probability", tier: "agency", type: "monitor", status: "roadmap", needsScrape: true },
-  { id: 41, name: "Agent 41 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 42, name: "Agent 42 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 43, name: "Agent 43 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 44, name: "Agent 44 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 48, name: "Agent 48 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 49, name: "Agent 49 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 50, name: "Agent 50 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 51, name: "Agent 51 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 52, name: "Agent 52 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
-  { id: 54, name: "Agent 54 (spec pending)", tier: "agency", type: "tbd", status: "roadmap", needsName: true },
+  {
+    id: 41, name: "Multi-Language GEO Agent", tier: "agency", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["businessName", "industry", "languages"], extraInputs: ["location", "contentBlock"],
+    outputType: "doc",
+    prompt: "You are a multilingual GEO specialist. Create localized versions of key page content for {businessName}, a {industry} business in {location}, in these target language(s): {languages}. Preserve GEO rules (BLUF, authority markers, natural local references) and cultural nuance — do not translate literally. Source content (if provided): {contentBlock}. If no source is provided, generate a localized hero paragraph + 3 FAQs per language. Also generate hreflang tags and a short implementation note. Return ONLY JSON: { \"title\": \"Localized content\", \"bodyHtml\": \"<localized content, an <h2> per language>\", \"codeBlocks\": [ { \"label\": \"hreflang tags\", \"code\": \"<link rel=\\\"alternate\\\" hreflang=…>\" } ] }",
+    why: "In markets like Hawaii, supporting multiple languages significantly expands reachable audience and citation opportunities.",
+  },
+  { id: 42, name: "Automated Change Deployer", tier: "agency", type: "deploy", status: "roadmap", needsScrape: false,
+    note: "Pushes approved changes into the CMS via API (WordPress/Webflow) — needs CMS credentials + write access + versioning. Heavy/later." },
+  {
+    id: 43, name: "Predictive Impact Simulator", tier: "agency", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["proposedChange"], extraInputs: ["currentScore", "businessName", "industry"],
+    outputType: "cards",
+    prompt: "Estimate how much this proposed change will improve a business's AI Recommendation Probability. Proposed change: {proposedChange}. Current score (if known): {currentScore}. Business: {businessName} ({industry}). Using GEO best practices, estimate the score lift, a confidence level, and whether to prioritize it. Return ONLY JSON: { \"items\": [ { \"title\": \"Predicted lift\", \"body\": \"+X points · confidence: low/medium/high\" }, { \"title\": \"Reasoning\", \"body\": \"…\" }, { \"title\": \"Prioritize now?\", \"body\": \"yes/no + why\" } ] }",
+    why: "Focus effort on changes with the highest ROI instead of guessing. (Lighter heuristic version; the full model uses Agents 29/36 + historical client data.)",
+  },
+  { id: 44, name: "Competitor Evolution Tracker", tier: "agency", type: "monitor", status: "roadmap", needsScrape: false,
+    note: "Weekly scheduled competitor crawls + snapshot diffs + alerts — needs scheduling + a snapshot database. Heavy/later." },
+  { id: 48, name: "Anomaly & Risk Alert", tier: "agency", type: "monitor", status: "roadmap", needsScrape: false,
+    note: "Monitors all agent outputs over time for sudden drops — needs the metrics database + scheduled checks. Heavy/later." },
+  {
+    id: 49, name: "Master Orchestrator", tier: "agency", type: "generate", mode: "llm",
+    status: "live", lite: true, liteLabel: "Lite · plan only", needsScrape: false,
+    inputs: ["businessName", "workflow"], extraInputs: ["industry", "location"],
+    outputType: "cards",
+    prompt: "You are the GeoTrackerPro orchestrator. For {businessName} ({industry} in {location}), the requested workflow is: {workflow}. Recommend the optimal ordered sequence of GeoTrackerPro agents to run (e.g. Query Research → Title/Meta/Hero → FAQ → Schema → Authority → Internal Links → Citation Check → Blog, etc.). Return an ordered plan. Return ONLY JSON: { \"items\": [ { \"title\": \"Step N — <agent name>\", \"body\": \"what it does + why at this step\" } ] }",
+    why: "The brain that sequences the agents into one workflow. (Lite version outputs the plan; auto-running every agent end-to-end comes later.)",
+  },
+  {
+    id: 50, name: "Natural Language GEO Consultant", tier: "agency", type: "generate", mode: "llm",
+    status: "live", lite: true, liteLabel: "Lite · plan only", needsScrape: false,
+    inputs: ["request"], extraInputs: ["businessName"],
+    outputType: "cards",
+    prompt: "You are the GeoTrackerPro AI consultant. A client said: \"{request}\". Interpret what they actually need, then output a recommended action plan: which GeoTrackerPro agents to run and in what order, each with a one-line reason. Return ONLY JSON: { \"items\": [ { \"title\": \"<agent / action>\", \"body\": \"<why>\" } ] }",
+    why: "Makes the whole system accessible to non-technical clients in plain language. (Lite version returns the plan; auto-triggering agents comes later.)",
+  },
+  { id: 51, name: "Per-Client Dashboard & Instance Manager", tier: "agency", type: "platform", status: "roadmap", needsScrape: false,
+    note: "Platform infrastructure, not a runnable agent: multi-tenant isolation — separate data + dashboards per client. Build alongside white-label (54) when scaling to paying clients." },
+  {
+    id: 52, name: "ROI & Business Impact Calculator", tier: "agency", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["currentScore", "businessName", "industry"], extraInputs: ["ltv", "monthlyLeads", "location"],
+    outputType: "cards",
+    prompt: "You are a GEO ROI analyst. For {businessName} ({industry} in {location}), project the business impact of improving their AI Recommendation Probability. Current GEO score: {currentScore}. Average customer LTV: {ltv}. Current monthly leads/traffic: {monthlyLeads}. Estimate the additional leads and revenue from raising the score (e.g., toward 75+), stating your assumptions clearly. Return ONLY JSON: { \"items\": [ { \"title\": \"Current state\", \"body\": \"…\" }, { \"title\": \"Projected at 75+\", \"body\": \"…\" }, { \"title\": \"Estimated added leads / revenue\", \"body\": \"…\" }, { \"title\": \"Assumptions\", \"body\": \"…\" } ] }",
+    why: "Translates GEO scores into revenue numbers — the report that justifies retainers to a business owner.",
+  },
+  { id: 54, name: "White-Label & Agency Mode", tier: "agency", type: "platform", status: "roadmap", needsScrape: false,
+    note: "Platform feature, not a runnable agent: multi-tenant rebranding (logo/colors/domain) across reports + UI. Build as infrastructure when selling agency seats." },
   { id: 55, name: "AI Chatbot Deployment", tier: "agency", type: "custom", status: "roadmap", needsScrape: true },
   { id: 57, name: "Knowledge Graph Optimization", tier: "agency", type: "audit", status: "roadmap", needsScrape: true },
 ];
@@ -289,8 +342,8 @@ export const TIERS = [
 ];
 
 // ---- Readiness bands (how much work/cost is left to build each) ----
-const MEDIUM = new Set([22, 23, 56, 57, 58, 59]); // need the site crawler, no API cost
-const HEAVY = new Set([12, 13, 17, 20, 21, 25, 28, 29, 31, 32, 33, 34, 36, 45, 55]); // need paid APIs / data / DB
+const MEDIUM = new Set([]); // (22,23,56,58,59 now live; nothing left in this band)
+const HEAVY = new Set([12, 13, 17, 20, 21, 25, 28, 29, 31, 32, 33, 34, 36, 42, 44, 45, 48, 51, 54, 55, 57]); // need paid APIs / data / DB / scheduling / platform infra
 
 export function bandOf(a) {
   if (a.status === "live") return "live";

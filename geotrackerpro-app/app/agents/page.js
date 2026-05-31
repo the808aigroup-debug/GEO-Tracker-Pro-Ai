@@ -51,7 +51,7 @@ export default function ControlPanel() {
                     </div>
                     <span className="chip-name">{a.name}</span>
                     {a.lite ? (
-                      <span className="chip-status" style={{ color: "#C2902F" }}>Lite · full later</span>
+                      <span className="chip-status" style={{ color: "#C2902F" }}>{a.liteLabel || "Lite · full later"}</span>
                     ) : (
                       <span className="chip-status" style={band === "heavy" ? { color: "#C2533B" } : undefined}>{BAND_LABEL[band]}</span>
                     )}
