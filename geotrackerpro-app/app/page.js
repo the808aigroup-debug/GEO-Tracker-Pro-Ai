@@ -22,6 +22,7 @@ export default function Home() {
     url: "",
     email: "",
     firstName: "",
+    phone: "",
     businessName: "",
     industry: "",
   });
@@ -100,8 +101,9 @@ export default function Home() {
             </div>
             <div className="row">
               <div>
-                <label>First name</label>
+                <label>First name *</label>
                 <input
+                  required
                   placeholder="Devin"
                   value={form.firstName}
                   onChange={update("firstName")}
@@ -120,21 +122,33 @@ export default function Home() {
             </div>
             <div className="row">
               <div>
-                <label>Business name</label>
+                <label>Phone *</label>
                 <input
+                  required
+                  type="tel"
+                  placeholder="(808) 555-0199"
+                  value={form.phone}
+                  onChange={update("phone")}
+                />
+              </div>
+              <div>
+                <label>Business name *</label>
+                <input
+                  required
                   placeholder="Acme Co."
                   value={form.businessName}
                   onChange={update("businessName")}
                 />
               </div>
-              <div>
-                <label>Industry</label>
-                <input
-                  placeholder="e.g. Roofing, SaaS, Law"
-                  value={form.industry}
-                  onChange={update("industry")}
-                />
-              </div>
+            </div>
+            <div>
+              <label>Industry *</label>
+              <input
+                required
+                placeholder="e.g. Roofing, SaaS, Law"
+                value={form.industry}
+                onChange={update("industry")}
+              />
             </div>
             <button className="cta" type="submit">
               Run my free GEO audit →

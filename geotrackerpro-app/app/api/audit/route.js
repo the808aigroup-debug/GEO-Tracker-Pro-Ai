@@ -46,10 +46,10 @@ export async function POST(req) {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  let { url, email, firstName, businessName, industry } = body || {};
-  if (!url || !email) {
+  let { url, email, firstName, phone, businessName, industry } = body || {};
+  if (!url || !email || !firstName || !phone || !businessName || !industry) {
     return Response.json(
-      { error: "Website URL and email are both required." },
+      { error: "Please fill in every field — they're all required." },
       { status: 400 }
     );
   }
@@ -94,6 +94,7 @@ export async function POST(req) {
         url,
         email,
         first_name: firstName || null,
+        phone: phone || null,
         business_name: businessName || null,
         industry: industry || null,
         overall_score: audit.overall_score,
