@@ -23,10 +23,19 @@ const BLURBS = {
   18: "Real buyer queries from live autocomplete.",
   27: "Brand-perception query playbook + sheet.",
   19: "sameAs entity-linking schema block.",
+  22: "Schema + crawl-health audit of a page.",
+  23: "Image & alt-text audit + ImageObject schema.",
   24: "VideoObject schema for an embedded video.",
   26: "PR pitch drafts + outlet targets + follow-ups.",
   30: "Founder Person schema + bios + author block.",
   35: "Local semantic map + injection snippets + FAQs.",
+  37: "Full ready-to-publish service page + schema.",
+  38: "Hyper-local landing pages per neighborhood.",
+  39: "3 A/B content variants with pros/cons.",
+  40: "Voice-optimized content + Speakable schema.",
+  46: "Top authority sources + outreach plan.",
+  47: "Smart review reply + follow-up actions.",
+  53: "Industry-specific GEO templates.",
   60: "Full GEO blog post + Article/FAQ schema + social.",
 };
 
@@ -66,6 +75,10 @@ const FIELD_LABELS = {
   serviceArea: "Service area / named neighborhoods",
   topic: "Blog topic",
   targetQuery: "Target query",
+  serviceName: "Service name",
+  areas: "Target areas (neighborhoods/zips)",
+  contentBlock: "Content block to work on",
+  reviewText: "Customer review text",
 };
 const PLACEHOLDERS = {
   businessName: "Aloha Roofing",
@@ -89,6 +102,10 @@ const PLACEHOLDERS = {
   serviceArea: "Kaimukī, Manoa, Diamond Head, Waikīkī",
   topic: "How to choose a roofer in Honolulu",
   targetQuery: "best roofer in Honolulu",
+  serviceName: "Emergency Roof Repair",
+  areas: "Kaimukī, Manoa, Kailua",
+  contentBlock: "Paste the hero text / FAQ / block to rework",
+  reviewText: "Paste the customer review here",
   profiles: "Paste profile URLs, separated by spaces or commas",
   videoUrl: "https://youtube.com/watch?v=…",
   videoTitle: "How to choose a roofer in Honolulu",
@@ -195,6 +212,54 @@ function Output({ out }) {
 
       {out.outputType === "playbook" && (
         <div className="out-row"><pre className="code">{r.playbook}</pre><CopyBtn text={r.playbook} /></div>
+      )}
+
+      {out.outputType === "doc" && (
+        <>
+          {r.title && <div className="section-title" style={{ fontSize: 16, margin: "0 0 8px" }}>{r.title}</div>}
+          {r.bodyHtml && (
+            <div className="out-row">
+              <pre className="code" style={{ maxHeight: 320 }}>{r.bodyHtml}</pre>
+              <CopyBtn text={r.bodyHtml} />
+            </div>
+          )}
+          {(r.codeBlocks || []).map((b, i) => (
+            <div key={i}>
+              <div className="weight-tag" style={{ margin: "10px 0 4px" }}>{b.label}</div>
+              <div className="out-row"><pre className="code">{b.code}</pre><CopyBtn text={b.code} /></div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {out.outputType === "cards" && (
+        <>
+          {r.intro && <div className="weight-tag" style={{ marginBottom: 8 }}>{r.intro}</div>}
+          {(r.items || []).map((it, i) => (
+            <div className="factor" key={i}>
+              <div className="factor-head">
+                <span className="factor-name">{it.title}</span>
+                <CopyBtn text={it.body} />
+              </div>
+              <div className="factor-find" style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{it.body}</div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {out.outputType === "checks" && (
+        <>
+          {r.summary && <p className="exec" style={{ marginTop: 0 }}>{r.summary}</p>}
+          {(r.checks || []).map((c, i) => (
+            <div className="factor" key={i}>
+              <div className="factor-head">
+                <span className="factor-name">{c.label}</span>
+                <span className="score-chip" style={{ background: c.status === "pass" ? "#138C82" : c.status === "warn" ? "#C2902F" : "#C2533B" }}>{c.status}</span>
+              </div>
+              {c.fix && c.status !== "pass" && <div className="factor-find" style={{ marginTop: 6 }}>{c.fix}</div>}
+            </div>
+          ))}
+        </>
       )}
 
       {out.outputType === "query-list" && (

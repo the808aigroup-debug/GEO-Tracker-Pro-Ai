@@ -154,6 +154,22 @@ function buildVideoSchema({ videoUrl, videoTitle, videoDesc }) {
   return `<script type="application/ld+json">\n${JSON.stringify(obj, null, 2)}\n</script>`;
 }
 
+// Lightweight single-page fetch for crawl-based audit agents (22, 23).
+async function fetchPageHtml(url) {
+  if (!url) return "";
+  try {
+    const u = /^https?:\/\//i.test(url) ? url : "https://" + url;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(u, { headers: { "User-Agent": SUGGEST_UA }, signal: ctrl.signal });
+    clearTimeout(t);
+    if (!r.ok) return "";
+    return (await r.text()).slice(0, 18000);
+  } catch {
+    return "";
+  }
+}
+
 async function callLLM(prompt, maxTokens = 800) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const model = process.env.CLAUDE_MODEL_FREE || "claude-haiku-4-5-20251001";
@@ -703,6 +719,26 @@ export async function runAgent({ agentId, inputs }) {
     };
     data.articleSchema = `<script type="application/ld+json">\n${JSON.stringify(article, null, 2)}\n</script>`;
     data.faqSchema = `<script type="application/ld+json">\n${JSON.stringify(faqPage, null, 2)}\n</script>`;
+    return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
+  }
+
+  // Generic LLM agents that return a doc, cards, or checks shape (37,38,39,40,46,47,53 + crawl audits 22,23).
+  if (agent.outputType === "doc" || agent.outputType === "cards" || agent.outputType === "checks") {
+    const vars = { ...inputs };
+    if (agent.needsScrape) vars.pageHtml = (await fetchPageHtml(inputs.url)) || "[page could not be fetched]";
+    const filled = fillTemplate(agent.prompt, vars);
+    const maxT = agent.outputType === "doc" ? 4000 : 1800;
+    let data;
+    try {
+      data = parseJsonObj(await callLLM(filled, maxT));
+    } catch {
+      data =
+        agent.outputType === "cards"
+          ? { items: [{ title: "Result", body: "Generation failed — please try again." }] }
+          : agent.outputType === "checks"
+          ? { summary: "Generation failed — please try again.", checks: [] }
+          : { title: "Result", bodyHtml: "<p>Generation failed — please try again.</p>", codeBlocks: [] };
+    }
     return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: data };
   }
 

@@ -123,8 +123,19 @@ export const AGENTS = [
     why: "sameAs is the schema-level entity disambiguation signal — pairs with Wikidata to make the business unmistakably 'this entity' to AI crawlers.",
   },
   { id: 21, name: "Citation Source Audit", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
-  { id: 22, name: "Schema Validator + Crawl Health", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
-  { id: 23, name: "Image & Alt-Text Optimization", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
+  {
+    id: 22, name: "Schema Validator + Crawl Health", tier: "pro", type: "audit", mode: "llm",
+    status: "live", needsScrape: true, inputs: ["url"], outputType: "checks",
+    prompt: "You are auditing a web page for schema validity and crawl health. Page HTML:\n{pageHtml}\n\nCheck each of these and report status: (1) JSON-LD blocks present and structurally valid, (2) noindex meta tag, (3) canonical tag present / conflicting, (4) mixed content (http on https), (5) viewport / mobile-friendly meta, (6) title + meta description present, (7) robots meta. Return ONLY JSON: { \"summary\": \"<1-2 sentences>\", \"checks\": [ { \"label\": \"\", \"status\": \"pass|warn|fail\", \"fix\": \"<exact remediation>\" } ] }",
+    why: "A broken schema block silently kills everything the schema agents built. This is the QA layer to run after every change.",
+  },
+  {
+    id: 23, name: "Image & Alt-Text Optimization", tier: "pro", type: "audit", mode: "llm",
+    status: "live", needsScrape: true, inputs: ["url", "businessName", "industry"], extraInputs: ["location"],
+    outputType: "doc",
+    prompt: "You are auditing images on a web page for {businessName} ({industry} in {location}). Page HTML:\n{pageHtml}\n\nFor each <img>, assess the filename and alt text (good alt includes service + location). Suggest a better filename and alt for each. Generate an ImageObject JSON-LD for the hero image. Return ONLY JSON: { \"title\": \"Image & Alt-Text Audit\", \"bodyHtml\": \"<an HTML <ul> listing each image: current filename/alt → issues → suggested filename/alt>\", \"codeBlocks\": [ { \"label\": \"ImageObject (hero)\", \"code\": \"<script type=\\\"application/ld+json\\\">…</script>\" } ] }",
+    why: "Gemini and GPT-4V read images. Descriptive filenames + alt text are the multimodal equivalent of meta descriptions.",
+  },
   {
     id: 24, name: "Video Schema", tier: "pro", type: "generate", mode: "deterministic",
     status: "live", needsScrape: false, inputs: ["videoUrl"], extraInputs: ["videoTitle", "videoDesc"],
@@ -151,14 +162,56 @@ export const AGENTS = [
     prompt: "You are a local-SEO/GEO expert. For {businessName}, a {industry} business serving {location} ({serviceArea}), build a deep local semantic map. Cover these categories: neighborhoods (with zip codes), climate/weather factors relevant to {industry}, local regulations or permits, seasonal local problems, local terminology/dialect, and major landmarks. Map signals to target pages and write injection snippets. Return ONLY JSON: { \"signals\": [ { \"category\": \"\", \"detail\": \"\" } ], \"injections\": [ { \"page\": \"\", \"recommendation\": \"\" } ], \"paragraph\": \"<sample hyper-local homepage paragraph>\", \"faqs\": [ { \"q\": \"\", \"a\": \"\" } ], \"areaServed\": [ \"<neighborhood>\" ] }",
     why: "AI engines treat 'we serve Honolulu' and a richly localized signal set as completely different. This is what separates a generic local business from 'the local expert' entity.",
   },
-  { id: 37, name: "Agent 37 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 38, name: "Agent 38 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 39, name: "Agent 39 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 40, name: "Agent 40 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 45, name: "Agent 45 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 46, name: "Agent 46 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 47, name: "Agent 47 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
-  { id: 53, name: "Agent 53 (spec pending)", tier: "pro", type: "tbd", status: "roadmap", needsName: true },
+  {
+    id: 37, name: "Full Service Page Generator", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["businessName", "industry", "serviceName"], extraInputs: ["location", "targetQuery"],
+    outputType: "doc",
+    prompt: "Generate a complete, ready-to-publish service page for {businessName}, a {industry} business in {location}, for the service: {serviceName}. Target queries: {targetQuery}. Requirements: BLUF hero, E-E-A-T authority signals, an FAQ section, internal links to /services and /contact, and a CTA. Return ONLY JSON: { \"title\": \"\", \"bodyHtml\": \"<full HTML using h1/h2/h3/p/ul>\", \"codeBlocks\": [ { \"label\": \"Service + FAQPage JSON-LD\", \"code\": \"<script type=\\\"application/ld+json\\\">…</script>\" } ] }",
+    why: "Scale from one optimized page to an entire service section — dramatically increasing content coverage and citation potential.",
+  },
+  {
+    id: 38, name: "Location Cluster Page Builder", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["businessName", "industry", "areas"], extraInputs: ["location"],
+    outputType: "doc",
+    prompt: "Generate hyper-local landing page content for {businessName}, a {industry} business in {location}, for these areas: {areas}. For EACH area, produce a unique short hero paragraph, 2 FAQs, and an authority note. Return ONLY JSON: { \"title\": \"Location pages\", \"bodyHtml\": \"<HTML with an <h2> per area, each with hero + FAQs>\", \"codeBlocks\": [ { \"label\": \"AreaServed schema\", \"code\": \"…\" } ] }",
+    why: "Hyper-local pages are one of the strongest signals for 'best [service] in [neighborhood]' queries — neighborhood-level dominance.",
+  },
+  {
+    id: 39, name: "A/B Content Variant Agent", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["contentBlock", "businessName", "industry"], extraInputs: ["location"],
+    outputType: "cards",
+    prompt: "Create 3 alternative versions of this content block for A/B testing. Original: {contentBlock}. Business: {businessName}, a {industry} in {location}. Variant 1 = more authority, Variant 2 = more local, Variant 3 = more benefit-driven. Return ONLY JSON: { \"items\": [ { \"title\": \"Variant 1 — more authority\", \"body\": \"<the variant text>\" } ] }",
+    why: "Real A/B testing of what actually moves citation and perception scores instead of guessing.",
+  },
+  {
+    id: 40, name: "Voice & Speakable Content Agent", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["businessName", "industry"], extraInputs: ["location", "contentBlock"],
+    outputType: "doc",
+    prompt: "Rewrite the following content for voice search (natural spoken language, direct answers) and generate Speakable JSON-LD. Content: {contentBlock}. Business: {businessName}, a {industry} in {location}. Return ONLY JSON: { \"title\": \"Voice-optimized content\", \"bodyHtml\": \"<rewritten content as HTML>\", \"codeBlocks\": [ { \"label\": \"Speakable JSON-LD\", \"code\": \"…\" } ] }",
+    why: "Content that speaks naturally gets pulled into more AI voice and audio answers.",
+  },
+  { id: 45, name: "Multimodal Visibility Tester", tier: "pro", type: "monitor", status: "roadmap", needsScrape: false,
+    note: "Runs visual search in Gemini/GPT-4V — needs vision API access. Heavy/later." },
+  {
+    id: 46, name: "Source Authority Mapper", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["industry", "location"], outputType: "cards",
+    prompt: "List the 8 most authoritative knowledge sources AI engines trust for a {industry} business in {location} — directories, publications, associations, review sites. For each, give why it matters and a concrete outreach recommendation. Return ONLY JSON: { \"items\": [ { \"title\": \"<source name>\", \"body\": \"Why: … | Outreach: …\" } ] }",
+    why: "Getting mentioned in the right sources dramatically boosts entity trust.",
+  },
+  {
+    id: 47, name: "Review Response Strategist", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["reviewText", "businessName"], extraInputs: ["authorityMarkers"],
+    outputType: "cards",
+    prompt: "Write a smart, natural reply to this customer review that reinforces authority and feeds future citations. Review: {reviewText}. Business: {businessName}. Authority markers: {authorityMarkers}. Return ONLY JSON: { \"items\": [ { \"title\": \"Suggested reply\", \"body\": \"<reply>\" }, { \"title\": \"Follow-up actions\", \"body\": \"<2-3 actions>\" } ] }",
+    why: "Smart review management directly improves perception and citation rates.",
+  },
+  {
+    id: 53, name: "Vertical Specialization Agent", tier: "pro", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["industry"], extraInputs: ["location"],
+    outputType: "cards",
+    prompt: "Provide the top 5 vertical-specific GEO optimizations a {industry} business{location} should make for AI search. For each, give a concrete template or example. Return ONLY JSON: { \"items\": [ { \"title\": \"<optimization>\", \"body\": \"<template/example>\" } ] }",
+    why: "Deeper, industry-specific optimization per vertical.",
+  },
   { id: 56, name: "Lead Capture & Conversion", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
   { id: 58, name: "Featured Snippet & PAA", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
   { id: 59, name: "Accessibility / WCAG", tier: "pro", type: "audit", status: "roadmap", needsScrape: true },
@@ -237,7 +290,7 @@ export const TIERS = [
 
 // ---- Readiness bands (how much work/cost is left to build each) ----
 const MEDIUM = new Set([22, 23, 56, 57, 58, 59]); // need the site crawler, no API cost
-const HEAVY = new Set([12, 13, 15, 17, 20, 21, 25, 27, 28, 29, 31, 32, 33, 34, 36, 55]); // need paid APIs / data / DB
+const HEAVY = new Set([12, 13, 17, 20, 21, 25, 28, 29, 31, 32, 33, 34, 36, 45, 55]); // need paid APIs / data / DB
 
 export function bandOf(a) {
   if (a.status === "live") return "live";
