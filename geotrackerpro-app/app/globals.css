@@ -229,7 +229,61 @@ button.cta:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .upsell h3 { margin: 0 0 8px; font-size: 21px; font-family: var(--font-display); font-weight: 700; color: var(--pacific); }
 
+/* ---------- Starter Tools page ---------- */
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.tool-card {
+  text-align: left;
+  background: var(--cloud);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tool-card:hover { border-color: var(--seaglass); }
+.tool-card.active { border-color: var(--seaglass); background: rgba(22, 179, 166, 0.07); }
+.tool-name { font-weight: 600; color: var(--pacific); font-size: 15px; }
+.tool-blurb { color: var(--muted); font-size: 13px; line-height: 1.4; }
+
+.out-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.out-row:first-of-type { border-top: none; }
+.out-text { color: var(--pacific); font-size: 15px; }
+.copybtn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--seaglass);
+  color: var(--ocean);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.copybtn:hover { background: rgba(22, 179, 166, 0.1); }
+.code {
+  flex: 1;
+  background: var(--pacific);
+  color: #d7e3e1;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
 @media (max-width: 640px) {
   h1 { font-size: 34px; }
-  .row, .cols { grid-template-columns: 1fr; }
+  .row, .cols, .tool-grid { grid-template-columns: 1fr; }
 }
