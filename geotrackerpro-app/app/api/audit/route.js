@@ -1,7 +1,7 @@
 import { scrapeSite } from "../../../lib/scraper.js";
 import { runAudit } from "../../../lib/claude.js";
 import { renderReportHtml } from "../../../lib/report.js";
-import { sendReportEmail } from "../../../lib/email.js";
+import { sendReportEmail, addContactToAudience } from "../../../lib/email.js";
 import { saveLead } from "../../../lib/db.js";
 
 // Allow up to 60s — scrape + Claude can take 30-50s. (Vercel: Hobby/Pro support this.)
@@ -89,6 +89,7 @@ export async function POST(req) {
     // Optional side effects (no-ops if not configured) — don't block on them.
     const [emailResult] = await Promise.all([
       sendReportEmail({ to: email, audit, reportHtml }),
+      addContactToAudience({ email, firstName }),
       saveLead({
         url,
         email,

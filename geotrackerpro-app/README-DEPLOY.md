@@ -58,6 +58,10 @@ Without this, the report shows on screen but isn't emailed.
    - `RESEND_FROM_NAME` = `GeoTrackerPro`
 5. **Redeploy** (Vercel → Deployments → ⋯ → Redeploy) so the new keys take effect.
 
+**Lead-gen / nurture campaign:** to also auto-add each lead to an email nurture sequence,
+add `RESEND_AUDIENCE_ID` (from Resend → Audiences) and follow the full setup +
+ready-to-paste email copy in **`NURTURE-SEQUENCE-Book-A-Call.md`**.
+
 ---
 
 ## Step 4 (optional) — Save leads to a database (Supabase)

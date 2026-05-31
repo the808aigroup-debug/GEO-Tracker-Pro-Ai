@@ -1,9 +1,9 @@
 // Branded HTML report used for the emailed version (inline styles for email clients).
 
 function scoreColor(score) {
-  if (score >= 75) return "#2e9e5b";
-  if (score >= 60) return "#d99213";
-  return "#d64545";
+  if (score >= 75) return "#138C82"; // Sea Glass (deep)
+  if (score >= 60) return "#C2902F"; // Sand amber
+  return "#C2533B"; // Terracotta
 }
 
 function esc(s) {
@@ -40,19 +40,19 @@ export function renderReportHtml(audit) {
   const plan = (audit.thirty_day_action_plan || [])
     .map(
       (p) => `<tr>
-        <td style="padding:10px 0;border-top:1px solid #eee;color:#5b8cff;font-weight:600;width:70px;">Week ${p.week}</td>
+        <td style="padding:10px 0;border-top:1px solid #eee;color:#16B3A6;font-weight:600;width:70px;">Week ${p.week}</td>
         <td style="padding:10px 0;border-top:1px solid #eee;color:#333;">${esc(p.action)}</td>
-        <td style="padding:10px 0;border-top:1px solid #eee;color:#2e9e5b;font-weight:600;text-align:right;width:90px;">${esc(p.impact)}</td>
+        <td style="padding:10px 0;border-top:1px solid #eee;color:#138C82;font-weight:600;text-align:right;width:90px;">${esc(p.impact)}</td>
       </tr>`
     )
     .join("");
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;background:#f4f6fb;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1a1a2e;">
+<body style="margin:0;background:#F7F9FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0A1F2D;">
 <div style="max-width:640px;margin:0 auto;padding:24px;">
   <div style="text-align:center;padding:8px 0 20px;">
-    <div style="font-weight:700;font-size:20px;color:#5b8cff;">GeoTrackerPro</div>
-    <div style="color:#888;font-size:13px;">AI Search (GEO) Audit Report</div>
+    <div style="font-weight:800;font-size:20px;color:#0A1F2D;letter-spacing:-0.01em;">GeoTrackerPro <span style="color:#16B3A6;">·</span> <span style="font-weight:600;font-size:13px;color:#5A6B72;">by The 808 AI Group</span></div>
+    <div style="color:#5A6B72;font-size:13px;margin-top:2px;">AI Search (GEO) Audit Report</div>
   </div>
 
   <div style="background:#fff;border-radius:14px;padding:28px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -89,9 +89,10 @@ export function renderReportHtml(audit) {
     <table width="100%" cellpadding="0" cellspacing="0">${plan}</table>
   </div>
 
-  <div style="background:linear-gradient(135deg,#5b8cff,#8a6bff);border-radius:14px;padding:28px;margin-top:16px;text-align:center;color:#fff;">
+  <div style="background:#0A1F2D;border-radius:14px;padding:28px;margin-top:16px;text-align:center;color:#fff;">
     <div style="font-weight:700;font-size:20px;margin-bottom:8px;">Want us to fix all of this for you?</div>
-    <div style="font-size:15px;opacity:0.92;line-height:1.5;">The 808 AI Group does done-for-you GEO optimization — we implement every fix in this report so your business shows up in ChatGPT, Claude, Perplexity, and Gemini answers.</div>
+    <div style="font-size:15px;color:#C9D4D6;line-height:1.5;">The 808 AI Group does done-for-you GEO optimization — we implement every fix in this report so your business shows up in ChatGPT, Claude, Perplexity, and Gemini answers.</div>
+    <div style="margin-top:14px;"><span style="display:inline-block;background:#16B3A6;color:#fff;font-weight:600;font-size:15px;padding:11px 22px;border-radius:8px;">Book a Strategy Call</span></div>
   </div>
 
   <div style="text-align:center;color:#aaa;font-size:12px;margin-top:20px;">
