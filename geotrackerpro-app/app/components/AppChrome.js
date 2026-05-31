@@ -78,6 +78,12 @@ export default function AppChrome({ children }) {
         <div className="sidebar-foot">
           <div className="sb-user">The 808 AI Group</div>
           <div className="sb-role">Admin</div>
+          <button
+            className="logout-btn"
+            onClick={async () => { await fetch("/api/logout", { method: "POST" }); window.location.href = "/"; }}
+          >
+            Log out
+          </button>
         </div>
       </aside>
       <main className="sidebar-main">{children}</main>

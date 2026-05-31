@@ -77,6 +77,9 @@ export default function Home() {
 
   return (
     <div className="wrap">
+      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 14 }}>
+        <a href="/login" className="signin-link">Sign in →</a>
+      </div>
       <div className="hero">
         <span className="badge">Free AI Search Audit</span>
         <h1>Is your website invisible to ChatGPT?</h1>

@@ -398,6 +398,11 @@ button.cta:disabled { opacity: 0.55; cursor: not-allowed; }
 .sidebar-foot { border-top: 1px solid rgba(255,255,255,0.08); padding: 14px 8px 4px; }
 .sb-user { font-size: 13px; color: #fff; font-weight: 500; }
 .sb-role { font-family: var(--font-mono); font-size: 11px; color: #5f7682; }
+.logout-btn { margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #cdd9da; font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer; width: 100%; }
+.logout-btn:hover { background: rgba(255,255,255,0.06); }
+
+.signin-link { font-family: var(--font-mono); font-size: 13px; color: var(--ocean); text-decoration: none; border: 1px solid var(--border); padding: 6px 14px; border-radius: 999px; background: var(--card); }
+.signin-link:hover { border-color: var(--seaglass); }
 
 .sidebar-main { flex: 1; min-width: 0; }
 .sidebar-main .wrap { max-width: 1040px; padding-top: 24px; }
