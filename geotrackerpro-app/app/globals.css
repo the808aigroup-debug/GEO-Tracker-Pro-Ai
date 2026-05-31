@@ -246,6 +246,7 @@ button.cta:disabled { opacity: 0.55; cursor: not-allowed; }
 .tool-card:hover { border-color: var(--seaglass); }
 .tool-card.active { border-color: var(--seaglass); background: rgba(22, 179, 166, 0.07); }
 .tool-name { font-weight: 600; color: var(--pacific); font-size: 15px; }
+.tool-num { font-family: var(--font-mono); font-size: 12px; color: var(--seaglass); font-weight: 600; }
 .tool-blurb { color: var(--muted); font-size: 13px; line-height: 1.4; }
 
 .out-row {
