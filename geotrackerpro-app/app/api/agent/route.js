@@ -1,4 +1,5 @@
 import { runAgent } from "../../../lib/runAgent.js";
+import { getAgent } from "../../../lib/agents.js";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
@@ -15,11 +16,17 @@ export async function POST(req) {
   if (agentId === undefined || agentId === null) {
     return Response.json({ error: "Missing agentId." }, { status: 400 });
   }
-  // businessName + industry are required for the starter tools.
+
+  const agent = getAgent(agentId);
+  if (!agent) return Response.json({ error: "Unknown agent." }, { status: 400 });
+
+  // Validate the agent's required inputs (location is always optional).
   const i = inputs || {};
-  if (!i.businessName || !i.industry) {
+  const required = (agent.inputs || []).filter((x) => x !== "location");
+  const missing = required.filter((f) => !i[f]);
+  if (missing.length) {
     return Response.json(
-      { error: "Business name and industry are required." },
+      { error: `Missing required field(s): ${missing.join(", ")}.` },
       { status: 400 }
     );
   }
