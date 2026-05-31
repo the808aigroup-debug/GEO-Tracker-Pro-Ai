@@ -30,6 +30,15 @@ function recomputeScore(audit) {
   audit.overall_score = overall;
   audit.letter_grade = letter;
   audit.tier_label = tier;
+
+  // Keep the written summary consistent with the recomputed score/grade —
+  // the LLM sometimes states a number in prose that drifts from its own factor math.
+  if (typeof audit.executive_summary === "string") {
+    audit.executive_summary = audit.executive_summary
+      .replace(/\b\d{1,3}(?:\.\d+)?\s*\/\s*100\b/g, `${overall}/100`)
+      .replace(/\b([A-Fa-f])[\s-]?grade\b/g, `${letter} grade`)
+      .replace(/\bgrade[\s-]?([A-Fa-f])\b/g, `grade ${letter}`);
+  }
   return audit;
 }
 
