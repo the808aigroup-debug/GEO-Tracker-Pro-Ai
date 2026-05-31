@@ -6,6 +6,7 @@ const TOOLS = [
   { id: 1, name: "Dynamic Title Agent", blurb: "3 SEO/GEO-optimized <title> tag options." },
   { id: 2, name: "Meta Description Agent", blurb: "A 150–160 char BLUF meta description." },
   { id: 3, name: "Hero Text Agent", blurb: "A 150–180 word answer-first hero paragraph." },
+  { id: 5, name: "FAQ Section Agent", blurb: "8 FAQs as a drop-in HTML section + FAQPage schema." },
   { id: 8, name: "Last Updated Date Agent", blurb: "Freshness date + dateModified JSON-LD." },
 ];
 
@@ -152,6 +153,28 @@ function Output({ out }) {
           </div>
           <CopyBtn text={out.result.text} />
         </div>
+      )}
+
+      {out.outputType === "faq" && (
+        <>
+          <div className="weight-tag" style={{ marginBottom: 10 }}>
+            {out.result.faqs.length} FAQs generated. Paste the HTML block above your footer, and the JSON-LD inside &lt;head&gt;.
+          </div>
+          {out.result.faqs.map((f, i) => (
+            <div className="factor" key={i}>
+              <div className="factor-name">{f.q}</div>
+              <div className="factor-find" style={{ marginTop: 4 }}>{f.a}</div>
+            </div>
+          ))}
+          <div className="out-row" style={{ marginTop: 14 }}>
+            <pre className="code">{out.result.html}</pre>
+            <CopyBtn text={out.result.html} />
+          </div>
+          <div className="out-row">
+            <pre className="code">{out.result.jsonld}</pre>
+            <CopyBtn text={out.result.jsonld} />
+          </div>
+        </>
       )}
 
       {out.outputType === "code-freshness" && (

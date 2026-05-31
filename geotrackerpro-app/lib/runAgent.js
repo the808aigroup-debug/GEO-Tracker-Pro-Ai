@@ -62,6 +62,45 @@ function countWords(s) {
   return (s.trim().match(/\S+/g) || []).length;
 }
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function fallbackFaqs({ businessName, location, industry }) {
+  const loc = location ? ` in ${location}` : "";
+  const svc = industry || "services";
+  return [
+    { q: `How much does ${svc} cost${loc}?`, a: `Pricing depends on the size and scope of your project. ${businessName} provides a free, no-obligation estimate so you know the cost up front before any work begins.` },
+    { q: `Is ${businessName} licensed and insured?`, a: `Yes. ${businessName} is fully licensed and insured${loc}, so your project is protected and meets all local requirements.` },
+    { q: `How soon can you schedule my project?`, a: `In most cases we can schedule an estimate within a few days. ${businessName} works around your timeline and confirms a firm start date before beginning.` },
+    { q: `Do you offer a warranty on your work?`, a: `Yes. ${businessName} stands behind every job with a workmanship warranty. Specific terms are provided in writing with your estimate.` },
+    { q: `What areas do you serve?`, a: `${businessName} serves ${location || "the surrounding region"} and nearby communities. Contact us to confirm we cover your address.` },
+    { q: `Do you offer financing or payment options?`, a: `We offer flexible payment options to fit a range of budgets. Ask about current financing during your free consultation.` },
+    { q: `How does the estimate process work?`, a: `It starts with a free consultation where we assess your needs, then you receive a clear written estimate. There's no pressure and no obligation to proceed.` },
+    { q: `Why choose a local ${svc} company over a national chain?`, a: `As a local ${svc} provider${loc}, ${businessName} offers personal accountability, faster response, and deep knowledge of the area that national chains can't match.` },
+  ];
+}
+
+function buildFaqHtml(faqs) {
+  const items = faqs
+    .map((f) => `  <h3>${escapeHtml(f.q)}</h3>\n  <p>${escapeHtml(f.a)}</p>`)
+    .join("\n");
+  return `<section id="faq">\n  <h2>Frequently Asked Questions</h2>\n${items}\n</section>`;
+}
+
+function buildFaqJsonLd(faqs) {
+  const obj = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+  return `<script type="application/ld+json">\n${JSON.stringify(obj, null, 2)}\n</script>`;
+}
+
 export async function runAgent({ agentId, inputs }) {
   const agent = getAgent(agentId);
   if (!agent) throw new Error("Unknown agent.");
@@ -113,6 +152,26 @@ export async function runAgent({ agentId, inputs }) {
       text = fallbackHero(inputs);
     }
     return { agentId: agent.id, name: agent.name, outputType: agent.outputType, result: { text, words: countWords(text) } };
+  }
+
+  if (agent.outputType === "faq") {
+    let faqs;
+    try {
+      const raw = await callLLM(prompt, 1600);
+      const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      const first = cleaned.indexOf("[");
+      const last = cleaned.lastIndexOf("]");
+      faqs = JSON.parse(first !== -1 ? cleaned.slice(first, last + 1) : cleaned);
+      faqs = (faqs || []).filter((f) => f && f.q && f.a);
+      if (faqs.length < 6) throw new Error("too few");
+    } catch {
+      faqs = fallbackFaqs(inputs);
+    }
+    faqs = faqs.slice(0, 8);
+    return {
+      agentId: agent.id, name: agent.name, outputType: agent.outputType,
+      result: { faqs, html: buildFaqHtml(faqs), jsonld: buildFaqJsonLd(faqs) },
+    };
   }
 
   throw new Error("Unsupported agent output type.");

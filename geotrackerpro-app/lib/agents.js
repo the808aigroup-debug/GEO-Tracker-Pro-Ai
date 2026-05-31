@@ -45,7 +45,13 @@ export const AGENTS = [
     prompt: "Write a hero paragraph for a {industry} business named {businessName} based in {location}. Requirements: exactly 150–180 words; BLUF format (the very first sentence directly answers \"What is {businessName}?\"); the business name AND location must appear in the first 50 words; include 1–2 specific authority markers (years in business, license, certifications, review count, service area); end with a clear call to action. Return ONLY the paragraph.",
     why: "A direct-answer-first hero is the biggest predictor of whether AI engines cite a page.",
   },
-  { id: 5, name: "Agent 5 (spec pending)", tier: "starter", type: "tbd", status: "roadmap", needsName: true },
+  {
+    id: 5, name: "FAQ Section Agent", tier: "starter", type: "generate", mode: "llm",
+    status: "live", needsScrape: false, inputs: ["businessName", "location", "industry"],
+    outputType: "faq",
+    prompt: "Generate 8 question-driven FAQ entries for a {industry} business named {businessName} in {location}. Each entry must be a real question a customer would ask (starts with \"How\", \"What\", \"Do you\", \"How much\", etc.) and have a 2–4 sentence direct answer (no marketing fluff). Include service or location mention naturally. Return ONLY a JSON array of objects with shape { \"q\": string, \"a\": string }.",
+    why: "Question-driven H2/H3 headings + FAQPage schema is the single most reliable structural pattern for AI citations. Eight entries also passes layer 5 of the 8-Layer Audit.",
+  },
   {
     id: 8, name: "Last Updated Date Agent", tier: "starter", type: "deterministic", mode: "deterministic",
     status: "live", needsScrape: false, inputs: ["businessName", "url"], outputType: "code-freshness",
