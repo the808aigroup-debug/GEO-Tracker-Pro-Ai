@@ -380,6 +380,78 @@ function buildPersonEntity({ founderName, role, businessName, industry, years, c
   return { jsonld, longBio, shortBio, authorSnippet, checklist };
 }
 
+// Agent 15 — Citation Monitor manual playbook (deterministic)
+function buildCitationPlaybook({ businessName, industry, location }) {
+  const loc = location ? ` in ${location}` : "";
+  const queries = [
+    `best ${industry}${loc}`,
+    `top ${industry} companies${loc}`,
+    `who is the best ${industry}${loc}`,
+    `recommend a ${industry}${loc}`,
+    `most trusted ${industry}${loc}`,
+  ];
+  const engines = ["ChatGPT", "Perplexity", "Gemini", "Claude", "Copilot", "Google AI Overviews"];
+  const qList = queries.map((q, i) => `${i + 1}. ${q}`).join("\n");
+  const header = `| Query | ${engines.join(" | ")} |`;
+  const sep = `|---|${engines.map(() => "---").join("|")}|`;
+  const rows = queries.map((q) => `| ${q} |${engines.map(() => "  ").join("|")}|`).join("\n");
+  return `# AI Citation Check — ${businessName}
+
+Run each query in each AI engine, then mark how ${businessName} appears.
+
+## Queries
+${qList}
+
+## Score each cell
+🏆 Recommended = 4   ✅ Cited = 3   🟡 Mentioned = 1   ❌ Invisible = 0
+
+## Scoring grid (fill in)
+${header}
+${sep}
+${rows}
+
+## Citation Score
+Citation Score = (sum of all cells) ÷ (queries × engines × 4) × 100
+A higher score means AI engines recommend/cite ${businessName} more often.`;
+}
+
+// Agent 27 — Brand Perception manual playbook (deterministic, the 8 canonical queries)
+function buildPerceptionPlaybook({ businessName }) {
+  const queries = [
+    `Tell me about ${businessName}`,
+    `Is ${businessName} trustworthy?`,
+    `What is ${businessName} known for?`,
+    `Should I hire ${businessName}?`,
+    `What do customers say about ${businessName}?`,
+    `Compare ${businessName} to its competitors`,
+    `Are there any complaints about ${businessName}?`,
+    `Why would I choose ${businessName}?`,
+  ];
+  const qList = queries.map((q, i) => `${i + 1}. ${q}`).join("\n");
+  const engines = ["ChatGPT", "Perplexity", "Claude", "Gemini"];
+  const header = `| Query | ${engines.join(" | ")} |`;
+  const sep = `|---|${engines.map(() => "---").join("|")}|`;
+  const rows = queries.map((q) => `| ${q.slice(0, 28)}… |${engines.map(() => "  ").join("|")}|`).join("\n");
+  return `# AI Brand Perception — ${businessName}
+
+Run each query in ChatGPT, Perplexity, Claude, and Gemini. For each answer, record the sentiment (0–100), the adjectives the AI uses, and any "I can't verify" hedges or warnings (red flags).
+
+## Perception queries
+${qList}
+
+## Sentiment sheet (0–100 per engine)
+${header}
+${sep}
+${rows}
+
+## What to capture
+- Top adjectives the AI uses about ${businessName}
+- Trust language: present / hedged / absent
+- Any warnings or "I cannot verify" phrases (urgent red flags)
+- Named strengths and weaknesses
+- One-line summary: "The AI currently sees ${businessName} as: ___"`;
+}
+
 function deterministicFreshness({ url }) {
   const today = new Date().toISOString().slice(0, 10);
   const html = `<p class="last-updated">Last updated: ${today}</p>`;
@@ -454,6 +526,8 @@ export async function runAgent({ agentId, inputs }) {
     if (agent.id === 19) return { ...base, result: { jsonld: buildSameAs(inputs) } };
     if (agent.id === 24) return { ...base, result: { jsonld: buildVideoSchema(inputs) } };
     if (agent.id === 30) return { ...base, result: buildPersonEntity(inputs) };
+    if (agent.id === 15) return { ...base, result: { playbook: buildCitationPlaybook(inputs) } };
+    if (agent.id === 27) return { ...base, result: { playbook: buildPerceptionPlaybook(inputs) } };
     if (agent.id === 18) return await runQueryResearch(agent, inputs);
     throw new Error("No deterministic handler for this agent.");
   }

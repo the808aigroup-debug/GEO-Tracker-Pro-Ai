@@ -62,6 +62,13 @@ export default function InsightRunner({ agentId, title, subtitle, fields, kind }
 
 function Output({ out, kind }) {
   const r = out.result;
+  if (kind === "playbook") {
+    return (
+      <div className="card">
+        <div className="out-row"><pre className="code">{r.playbook}</pre><CopyBtn text={r.playbook} /></div>
+      </div>
+    );
+  }
   if (kind === "query-list") {
     return (
       <div className="card">

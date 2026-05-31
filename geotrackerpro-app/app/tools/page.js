@@ -18,8 +18,10 @@ const BLURBS = {
   10: "robots.txt allowing all AI crawlers.",
   11: "Site-wide Organization / LocalBusiness schema.",
   14: "Drop-in llms.txt press kit.",
+  15: "Manual citation-check playbook + scoring.",
   16: "Wikidata QuickStatements + notability check.",
   18: "Real buyer queries from live autocomplete.",
+  27: "Brand-perception query playbook + sheet.",
   19: "sameAs entity-linking schema block.",
   24: "VideoObject schema for an embedded video.",
   26: "PR pitch drafts + outlet targets + follow-ups.",
@@ -190,6 +192,10 @@ function Output({ out }) {
       {out.outputType === "string-list" && out.result.items.map((t, i) => (
         <div className="out-row" key={i}><div className="out-text">{t}</div><CopyBtn text={t} /></div>
       ))}
+
+      {out.outputType === "playbook" && (
+        <div className="out-row"><pre className="code">{r.playbook}</pre><CopyBtn text={r.playbook} /></div>
+      )}
 
       {out.outputType === "query-list" && (
         <>

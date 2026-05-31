@@ -6,10 +6,10 @@ export default function Citations() {
   return (
     <InsightRunner
       agentId={15}
-      title="AI Citations"
-      subtitle="Does AI recommend this business? A live, simulated citation check across buying-intent queries."
+      title="AI Citation Check"
+      subtitle="Generate a run-it-yourself playbook to check whether AI engines cite this business — with the scoring grid."
       fields={["businessName", "industry", "location"]}
-      kind="citation-check"
+      kind="playbook"
     />
   );
 }

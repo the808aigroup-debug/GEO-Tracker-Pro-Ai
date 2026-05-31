@@ -15,8 +15,8 @@ const NAV = [
     items: [
       { label: "Sites", href: "/sites" },
       { label: "Query Research", href: "/query-fanouts" },
-      { label: "AI Citations", soon: true },
-      { label: "Brand Perception", soon: true },
+      { label: "AI Citations", href: "/citations" },
+      { label: "Brand Perception", href: "/brand-perception" },
       { label: "AI Crawler Activity", soon: true },
       { label: "Traffic", soon: true },
       { label: "Freshness", soon: true },

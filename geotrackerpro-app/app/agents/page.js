@@ -50,7 +50,11 @@ export default function ControlPanel() {
                       <span className="status-dot" style={{ background: BAND_DOT[band] }} title={BAND_LABEL[band]} />
                     </div>
                     <span className="chip-name">{a.name}</span>
-                    <span className="chip-status" style={band === "heavy" ? { color: "#C2533B" } : undefined}>{BAND_LABEL[band]}</span>
+                    {a.lite ? (
+                      <span className="chip-status" style={{ color: "#C2902F" }}>Lite · full later</span>
+                    ) : (
+                      <span className="chip-status" style={band === "heavy" ? { color: "#C2533B" } : undefined}>{BAND_LABEL[band]}</span>
+                    )}
                   </div>
                 );
                 return band === "live" ? (
