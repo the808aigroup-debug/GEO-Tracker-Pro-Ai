@@ -158,7 +158,7 @@ export async function scrapeSite(url) {
     homepageHtml = await fetchHomepageRendered(url);
   }
   if (!homepageHtml) {
-    homepageHtml = await fetchText(url, 15000, 400_000);
+    homepageHtml = await fetchText(url, 10000, 300_000);
   }
   if (!homepageHtml) {
     throw new Error("Could not fetch the homepage. The site may be down or blocking requests.");
@@ -166,15 +166,16 @@ export async function scrapeSite(url) {
   const load_time_ms = Date.now() - start;
 
   const [robots, llms, sitemap] = await Promise.all([
-    fetchText(`${base}/robots.txt`, 8000, 50_000),
-    fetchText(`${base}/llms.txt`, 8000, 50_000),
-    fetchText(`${base}/sitemap.xml`, 8000, 200_000),
+    fetchText(`${base}/robots.txt`, 6000, 50_000),
+    fetchText(`${base}/llms.txt`, 6000, 50_000),
+    fetchText(`${base}/sitemap.xml`, 6000, 200_000),
   ]);
 
+  // 2 interior pages keeps the audit thorough but well under the 60s function limit.
   const sitemapUrls = extractSitemapUrls(sitemap);
-  const interiorUrls = pickInteriorUrls(sitemapUrls, url, 3);
+  const interiorUrls = pickInteriorUrls(sitemapUrls, url, 2);
   const interiorHtml = await Promise.all(
-    interiorUrls.map((u) => fetchText(u, 12000, 300_000))
+    interiorUrls.map((u) => fetchText(u, 8000, 200_000))
   );
 
   return {
