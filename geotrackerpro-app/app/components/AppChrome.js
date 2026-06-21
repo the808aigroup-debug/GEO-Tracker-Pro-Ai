@@ -7,7 +7,8 @@ const NAV = [
     group: "Overview",
     items: [
       { label: "Dashboard", href: "/dashboard" },
-      { label: "New Audit", href: "/" },
+      { label: "Run Audit", href: "/run-audit" },
+      { label: "New Audit (public)", href: "/" },
     ],
   },
   {
@@ -38,7 +39,7 @@ const NAV = [
   },
 ];
 
-const INTERNAL = ["/dashboard", "/sites", "/citations", "/brand-perception", "/query-fanouts", "/recommendations", "/reports", "/agents", "/tools"];
+const INTERNAL = ["/dashboard", "/sites", "/citations", "/brand-perception", "/query-fanouts", "/recommendations", "/reports", "/agents", "/tools", "/run-audit"];
 
 export default function AppChrome({ children }) {
   const pathname = usePathname() || "/";

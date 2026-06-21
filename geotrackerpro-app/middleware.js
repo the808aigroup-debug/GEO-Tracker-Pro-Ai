@@ -14,7 +14,9 @@ export const config = {
     "/reports/:path*",
     "/agents/:path*",
     "/tools/:path*",
+    "/run-audit/:path*",
     "/api/agent/:path*",
+    "/api/admin-audit/:path*",
   ],
 };
 
