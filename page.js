@@ -289,17 +289,34 @@ function Report({ audit, businessName, saved, onReset }) {
 }
 
 /* ============================================================
-   Client-ready PDF export.
-   Builds a fully self-contained, 808-branded HTML document in a
-   new window (no sidebar, no app chrome) and triggers the browser's
-   "Save as PDF". Works in every modern browser with zero extra
-   dependencies. Falls back to window.print() if popups are blocked.
+   Client-ready PDF export — premium 808-branded deliverable.
+   Opens a self-contained, fully styled report in a new window
+   (no app chrome) with a one-tap "Save as PDF" button. Zero deps.
+   Falls back to printing the current page if popups are blocked.
    ============================================================ */
+const BRAND = {
+  firm: "The 808 AI Group",
+  product: "GEO Tracker PRO",
+  email: "the808aigroup@gmail.com",
+  site: "geotrackerpro.ai",
+  // palette
+  pacific: "#0A1F2D",
+  ocean: "#0F3D4A",
+  seaglass: "#16B3A6",
+  sand: "#F3E8D5",
+};
+
 function esc(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function bandLabel(score) {
+  if (score >= 75) return "Strong AI visibility";
+  if (score >= 60) return "Some visibility — gaps to close";
+  return "Largely invisible to AI search";
 }
 
 function downloadReportPdf(audit, businessName) {
@@ -308,7 +325,7 @@ function downloadReportPdf(audit, businessName) {
     month: "long",
     day: "numeric",
   });
-  const overall = audit.overall_score;
+  const overall = Math.max(0, Math.min(100, Number(audit.overall_score) || 0));
   const ringColor = scoreHex(overall);
 
   const wins = (audit.top_3_wins || [])
@@ -321,13 +338,14 @@ function downloadReportPdf(audit, businessName) {
   const factors = (audit.factors || [])
     .map((f) => {
       const fc = scoreHex(f.score);
+      const w = Math.max(0, Math.min(100, Number(f.score) || 0));
       return `
         <div class="factor">
           <div class="factor-head">
-            <span class="factor-name">${esc(f.name)} <span class="weight">(${esc(f.weight)}%)</span></span>
-            <span class="factor-score" style="color:${fc}">${esc(f.score)}/100</span>
+            <span class="factor-name">${esc(f.name)} <span class="weight">${esc(f.weight)}% weight</span></span>
+            <span class="factor-score" style="color:${fc}">${esc(f.score)}<span class="of">/100</span></span>
           </div>
-          <div class="bar"><span style="width:${Math.max(0, Math.min(100, Number(f.score) || 0))}%;background:${fc}"></span></div>
+          <div class="bar"><span style="width:${w}%;background:${fc}"></span></div>
           <div class="factor-find">${esc(f.findings)}</div>
         </div>`;
     })
@@ -337,8 +355,8 @@ function downloadReportPdf(audit, businessName) {
     .map(
       (p) => `
         <div class="plan-row">
-          <span class="plan-week">Week ${esc(p.week)}</span>
-          <span>${esc(p.action)}</span>
+          <span class="plan-week">WEEK ${esc(p.week)}</span>
+          <span class="plan-act">${esc(p.action)}</span>
           <span class="plan-impact">${esc(p.impact)}</span>
         </div>`
     )
@@ -353,140 +371,210 @@ function downloadReportPdf(audit, businessName) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(docTitle)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --pacific:#0A1F2D; --ocean:#0F3D4A; --seaglass:#16B3A6; --sand:#F3E8D5;
-    --cloud:#F7F9FA; --border:#E2E8E8; --text:#0A1F2D; --muted:#5A6B72;
-    --good:#138C82; --bad:#C2533B;
+    --pacific:${BRAND.pacific}; --ocean:${BRAND.ocean}; --seaglass:${BRAND.seaglass};
+    --sand:${BRAND.sand}; --cloud:#F7F9FA; --border:#E4EAEA; --line:#EEF2F2;
+    --text:#0A1F2D; --muted:#64757C; --good:#138C82; --bad:#C2533B;
   }
   *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  body{margin:0;background:#fff;color:var(--text);
-    font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;}
-  .sheet{max-width:780px;margin:0 auto;padding:28px 30px 56px;}
+  html,body{margin:0;background:#EDF1F1;color:var(--text);
+    font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;
+    font-feature-settings:"ss01","cv11";-webkit-font-smoothing:antialiased;}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+  .sheet{max-width:820px;margin:0 auto;background:#fff;
+    box-shadow:0 18px 50px rgba(10,31,45,.12);}
 
-  /* Branded cover header */
-  .cover{display:flex;align-items:center;gap:16px;border-bottom:3px solid var(--seaglass);
-    padding-bottom:18px;margin-bottom:8px;}
-  .logo{background:var(--seaglass);color:var(--pacific);font-weight:900;font-size:24px;
-    border-radius:12px;padding:8px 14px;letter-spacing:-.02em;}
-  .cover-title{font-size:20px;font-weight:800;color:var(--pacific);}
-  .cover-sub{color:var(--muted);font-size:13px;margin-top:3px;}
+  /* ---- Top tip (screen only) ---- */
+  .tip{max-width:820px;margin:18px auto 14px;background:#0A1F2D;color:#CFE9E6;
+    border-radius:12px;padding:14px 18px;font-size:13px;line-height:1.5;
+    display:flex;gap:12px;align-items:flex-start;}
+  .tip b{color:#fff;} .tip .k{color:var(--seaglass);font-weight:700;}
+  .tip .dot{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--seaglass);
+    color:var(--pacific);font-weight:900;display:flex;align-items:center;justify-content:center;font-size:14px;}
 
-  .meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
-    gap:8px;margin:14px 0 4px;}
-  .meta .biz{font-size:22px;font-weight:800;color:var(--pacific);}
-  .meta .url{color:var(--muted);font-size:13px;}
+  /* ---- Cover band (full-bleed dark) ---- */
+  .cover{background:linear-gradient(135deg,var(--pacific) 0%,var(--ocean) 100%);
+    color:#fff;padding:40px 44px 36px;position:relative;overflow:hidden;}
+  .cover:after{content:"";position:absolute;right:-90px;top:-90px;width:260px;height:260px;
+    border-radius:50%;background:radial-gradient(circle,rgba(22,179,166,.30),transparent 68%);}
+  .brandrow{display:flex;align-items:center;gap:13px;position:relative;z-index:1;}
+  .logo{background:var(--seaglass);color:var(--pacific);font-weight:900;font-size:22px;
+    border-radius:11px;padding:7px 13px;letter-spacing:-.03em;line-height:1;}
+  .brandrow .firm{font-weight:700;font-size:14px;letter-spacing:.02em;}
+  .brandrow .firm span{color:var(--seaglass);}
+  .eyebrow{margin:26px 0 6px;font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--seaglass);font-weight:700;position:relative;z-index:1;}
+  .cover h1{margin:0;font-size:32px;font-weight:900;letter-spacing:-.02em;line-height:1.08;
+    position:relative;z-index:1;max-width:560px;}
+  .cover .for{margin-top:18px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    position:relative;z-index:1;}
+  .cover .for .biz{font-size:20px;font-weight:800;}
+  .cover .for .url{color:#9FB4BA;font-size:13px;}
+  .cover .date{position:absolute;right:44px;bottom:36px;color:#9FB4BA;font-size:12px;z-index:1;}
 
-  .scorebar{display:flex;align-items:center;gap:22px;background:var(--cloud);
-    border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin:14px 0 6px;}
-  .ring{width:104px;height:104px;border-radius:50%;flex-shrink:0;display:flex;
+  /* ---- Score hero ---- */
+  .body{padding:30px 44px 8px;}
+  .hero{display:flex;gap:26px;align-items:center;background:var(--cloud);
+    border:1px solid var(--border);border-radius:16px;padding:24px 26px;}
+  .ring{width:120px;height:120px;border-radius:50%;flex-shrink:0;display:flex;
     align-items:center;justify-content:center;
-    background:conic-gradient(${ringColor} ${overall * 3.6}deg,#E5ECEC 0deg);}
-  .ring-inner{width:84px;height:84px;border-radius:50%;background:#fff;display:flex;
-    flex-direction:column;align-items:center;justify-content:center;}
-  .ring-num{font-size:34px;font-weight:800;line-height:1;color:${ringColor};}
-  .ring-of{font-size:11px;color:var(--muted);}
-  .grade{display:inline-block;background:${ringColor};color:#06121f;font-weight:700;
-    font-size:13px;padding:5px 13px;border-radius:999px;margin-bottom:6px;}
-  .exec{color:#33454d;font-size:14px;margin:6px 0 0;}
+    background:conic-gradient(${ringColor} ${overall * 3.6}deg,#E2EAEA 0deg);}
+  .ring-inner{width:96px;height:96px;border-radius:50%;background:#fff;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(10,31,45,.04);}
+  .ring-num{font-size:40px;font-weight:900;line-height:1;color:${ringColor};letter-spacing:-.02em;}
+  .ring-of{font-size:11px;color:var(--muted);margin-top:2px;}
+  .hero-r{flex:1;min-width:0;}
+  .grade{display:inline-block;background:${ringColor};color:#fff;font-weight:800;
+    font-size:12.5px;letter-spacing:.02em;padding:6px 14px;border-radius:999px;margin-bottom:9px;}
+  .band{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:8px;}
+  .exec{color:#3A4C54;font-size:14px;margin:0;}
 
-  h2.sec{font-size:17px;font-weight:800;color:var(--pacific);margin:26px 0 10px;
-    padding-bottom:6px;border-bottom:1px solid var(--border);}
+  /* ---- Section headers ---- */
+  h2.sec{display:flex;align-items:center;gap:11px;font-size:13px;font-weight:800;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--pacific);margin:32px 0 14px;}
+  h2.sec:before{content:"";width:22px;height:4px;border-radius:2px;background:var(--seaglass);}
 
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  .panel{border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
-  .panel h3{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;}
+  /* ---- Wins / Issues ---- */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .panel{border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+  .panel.wins{background:linear-gradient(180deg,#F1FBF9,#fff);}
+  .panel.issues{background:linear-gradient(180deg,#FCF3F1,#fff);}
+  .panel h3{margin:0 0 11px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    font-weight:800;display:flex;align-items:center;gap:7px;}
   .panel.wins h3{color:var(--good);} .panel.issues h3{color:var(--bad);}
-  .panel ul{margin:0;padding-left:18px;} .panel li{margin-bottom:6px;font-size:13.5px;}
+  .panel h3:before{content:"";width:8px;height:8px;border-radius:50%;}
+  .panel.wins h3:before{background:var(--good);} .panel.issues h3:before{background:var(--bad);}
+  .panel ul{margin:0;padding-left:18px;} .panel li{margin-bottom:7px;font-size:13.5px;color:#2C3E45;}
 
-  .factor{border-top:1px solid var(--border);padding:13px 0;}
+  /* ---- 10-factor ---- */
+  .factors{border:1px solid var(--border);border-radius:14px;padding:6px 20px;}
+  .factor{border-top:1px solid var(--line);padding:14px 0;}
   .factor:first-child{border-top:none;}
-  .factor-head{display:flex;justify-content:space-between;align-items:center;gap:12px;}
-  .factor-name{font-weight:600;font-size:14px;color:var(--pacific);}
-  .factor-name .weight{color:var(--muted);font-size:12px;font-weight:400;}
-  .factor-score{font-weight:700;font-size:14px;}
-  .bar{height:8px;background:#E9EFEF;border-radius:999px;margin:9px 0;overflow:hidden;}
+  .factor-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  .factor-name{font-weight:700;font-size:14px;color:var(--pacific);}
+  .factor-name .weight{color:var(--muted);font-size:11px;font-weight:600;
+    background:#EEF3F3;border-radius:6px;padding:2px 7px;margin-left:6px;letter-spacing:.02em;}
+  .factor-score{font-weight:800;font-size:17px;letter-spacing:-.02em;}
+  .factor-score .of{font-size:11px;color:var(--muted);font-weight:600;}
+  .bar{height:7px;background:#EAF0F0;border-radius:999px;margin:9px 0;overflow:hidden;}
   .bar>span{display:block;height:100%;border-radius:999px;}
-  .factor-find{color:var(--muted);font-size:13px;}
+  .factor-find{color:#566B72;font-size:13px;}
 
-  .plan-row{display:grid;grid-template-columns:74px 1fr 96px;gap:12px;align-items:center;
-    padding:11px 0;border-top:1px solid var(--border);font-size:13.5px;}
+  /* ---- Plan ---- */
+  .plan{border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  .plan-row{display:grid;grid-template-columns:78px 1fr 104px;gap:14px;align-items:center;
+    padding:13px 20px;border-top:1px solid var(--line);font-size:13.5px;}
   .plan-row:first-child{border-top:none;}
-  .plan-week{font-weight:700;color:var(--seaglass);font-size:12.5px;}
-  .plan-impact{font-weight:700;color:var(--good);text-align:right;font-size:13px;}
+  .plan-row:nth-child(even){background:#FAFCFC;}
+  .plan-week{font-weight:800;color:var(--seaglass);font-size:11px;letter-spacing:.06em;}
+  .plan-act{color:#2C3E45;}
+  .plan-impact{font-weight:800;color:var(--good);text-align:right;font-size:12.5px;}
 
-  .cta-box{background:var(--sand);border:1px solid #E4D6BC;border-radius:14px;
-    padding:20px 22px;margin-top:24px;text-align:center;}
-  .cta-box h3{margin:0 0 6px;color:var(--pacific);font-size:18px;font-weight:800;}
-  .cta-box p{margin:0;color:#5b4f3a;font-size:14px;}
+  /* ---- CTA ---- */
+  .cta-box{background:linear-gradient(135deg,var(--pacific),var(--ocean));color:#fff;
+    border-radius:16px;padding:26px 28px;margin-top:30px;position:relative;overflow:hidden;}
+  .cta-box:after{content:"";position:absolute;left:-60px;bottom:-80px;width:220px;height:220px;
+    border-radius:50%;background:radial-gradient(circle,rgba(22,179,166,.28),transparent 68%);}
+  .cta-box h3{margin:0 0 7px;font-size:19px;font-weight:900;position:relative;z-index:1;}
+  .cta-box p{margin:0 0 14px;color:#CFE0E4;font-size:14px;position:relative;z-index:1;max-width:560px;}
+  .cta-btn{display:inline-block;background:var(--seaglass);color:var(--pacific);font-weight:800;
+    font-size:14px;padding:11px 20px;border-radius:10px;position:relative;z-index:1;}
 
-  .foot{margin-top:28px;padding-top:14px;border-top:2px solid var(--seaglass);
-    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+  /* ---- Footer ---- */
+  .foot{padding:22px 44px 30px;margin-top:14px;border-top:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
     color:var(--muted);font-size:12px;}
-  .foot b{color:var(--pacific);}
+  .foot .l b{color:var(--pacific);} .foot .l span{color:var(--seaglass);}
+  .foot .r{text-align:right;}
 
-  .card{break-inside:avoid;page-break-inside:avoid;}
-  .factor,.plan-row,.panel{break-inside:avoid;page-break-inside:avoid;}
-  @page{margin:14mm;}
-  @media print{.noprint{display:none!important;}}
-  .printbtn{position:fixed;top:14px;right:14px;background:var(--seaglass);color:#fff;
-    border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;
-    cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(10,31,45,.18);}
+  .factor,.plan-row,.panel,.hero,.cta-box{break-inside:avoid;page-break-inside:avoid;}
+  @page{margin:0;}
+  @media print{
+    html,body{background:#fff;}
+    .noprint{display:none!important;}
+    .sheet{box-shadow:none;max-width:none;}
+  }
+  .printbar{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(10,31,45,.96);
+    backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;gap:14px;
+    padding:10px 16px;}
+  .printbar .msg{color:#CFE9E6;font-size:13px;}
+  .printbar .msg .k{color:var(--seaglass);font-weight:700;}
+  .printbtn{background:var(--seaglass);color:var(--pacific);
+    border:none;border-radius:9px;padding:10px 20px;font-size:14px;font-weight:800;
+    cursor:pointer;font-family:inherit;}
+  .spacer{height:54px;}
 </style>
 </head>
 <body>
-  <button class="printbtn noprint" onclick="window.print()">⬇ Save as PDF</button>
+  <div class="printbar noprint">
+    <span class="msg">In the dialog: set <span class="k">Save as PDF</span>, then under <span class="k">More settings</span> uncheck <span class="k">Headers and footers</span>.</span>
+    <button class="printbtn" onclick="window.print()">⬇ Save as PDF</button>
+  </div>
+  <div class="spacer noprint"></div>
+
   <div class="sheet">
+    <!-- COVER -->
     <div class="cover">
-      <span class="logo">808</span>
-      <div>
-        <div class="cover-title">GEO Tracker PRO — AI Search Audit</div>
-        <div class="cover-sub">Generative Engine Optimization report · The 808 AI Group</div>
+      <div class="brandrow">
+        <span class="logo">808</span>
+        <span class="firm">The <span>808</span> AI Group · ${esc(BRAND.product)}</span>
+      </div>
+      <div class="eyebrow">Generative Engine Optimization Audit</div>
+      <h1>AI Search Visibility Report</h1>
+      <div class="for">
+        <span class="biz">${esc(businessName || audit.url_audited)}</span>
+        <span class="url">${esc(audit.url_audited)}</span>
+      </div>
+      <div class="date">${esc(today)}</div>
+    </div>
+
+    <div class="body">
+      <!-- SCORE HERO -->
+      <div class="hero">
+        <div class="ring"><div class="ring-inner">
+          <span class="ring-num">${esc(overall)}</span><span class="ring-of">/ 100</span>
+        </div></div>
+        <div class="hero-r">
+          <span class="grade">Grade ${esc(audit.letter_grade)} · ${esc(audit.tier_label)}</span>
+          <div class="band">${esc(bandLabel(overall))}</div>
+          <p class="exec">${esc(audit.executive_summary)}</p>
+        </div>
+      </div>
+
+      <!-- WINS / ISSUES -->
+      <h2 class="sec">What's Working &amp; What's Not</h2>
+      <div class="cols">
+        <div class="panel wins"><h3>Top Wins</h3><ul>${wins}</ul></div>
+        <div class="panel issues"><h3>Top Issues</h3><ul>${issues}</ul></div>
+      </div>
+
+      <!-- FACTORS -->
+      <h2 class="sec">10-Factor GEO Breakdown</h2>
+      <div class="factors">${factors}</div>
+
+      <!-- PLAN -->
+      <h2 class="sec">Your 30-Day Action Plan</h2>
+      <div class="plan">${plan}</div>
+
+      <!-- CTA -->
+      <div class="cta-box">
+        <h3>Want us to fix all of this for you?</h3>
+        <p>${esc(BRAND.firm)} does done-for-you GEO optimization — we implement every fix in this report so your business shows up when customers ask AI for a recommendation.</p>
+        <span class="cta-btn">${esc(BRAND.email)}</span>
       </div>
     </div>
 
-    <div class="meta">
-      <div>
-        <div class="biz">${esc(businessName || audit.url_audited)}</div>
-        <div class="url">${esc(audit.url_audited)}</div>
-      </div>
-      <div class="url">${esc(today)}</div>
-    </div>
-
-    <div class="scorebar">
-      <div class="ring"><div class="ring-inner">
-        <span class="ring-num">${esc(overall)}</span><span class="ring-of">/ 100</span>
-      </div></div>
-      <div>
-        <span class="grade">Grade ${esc(audit.letter_grade)} — ${esc(audit.tier_label)}</span>
-        <p class="exec">${esc(audit.executive_summary)}</p>
-      </div>
-    </div>
-
-    <div class="cols">
-      <div class="panel wins"><h3>Top Wins</h3><ul>${wins}</ul></div>
-      <div class="panel issues"><h3>Top Issues</h3><ul>${issues}</ul></div>
-    </div>
-
-    <h2 class="sec">10-Factor GEO Breakdown</h2>
-    ${factors}
-
-    <h2 class="sec">30-Day Action Plan</h2>
-    ${plan}
-
-    <div class="cta-box">
-      <h3>Want us to fix all of this for you?</h3>
-      <p>The 808 AI Group does done-for-you GEO optimization — we implement every fix above so your business shows up in AI answers.</p>
-    </div>
-
+    <!-- FOOTER -->
     <div class="foot">
-      <span><b>The 808 AI Group</b> · GEO Tracker PRO</span>
-      <span>AI Search Visibility Audit · ${esc(today)}</span>
+      <span class="l"><b>The <span>808</span> AI Group</b> · ${esc(BRAND.product)}</span>
+      <span class="r">${esc(BRAND.email)} · ${esc(BRAND.site)}</span>
     </div>
   </div>
-  <script>
-    window.onload = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 350); };
-  </script>
 </body>
 </html>`;
 
